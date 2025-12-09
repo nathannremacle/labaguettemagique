@@ -19,16 +19,16 @@ export function Dialog({ isOpen, onClose, title, children, className }: DialogPr
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm ${
-        theme === "dark" ? "bg-black/50" : "bg-black/30"
+        theme === "dark" ? "bg-black/80" : "bg-black/60"
       }`}
       onClick={onClose}
     >
       <div
         className={cn(
-          "relative w-full max-w-md rounded-2xl border p-6 shadow-2xl",
+          "relative w-full h-full max-w-none max-h-none rounded-none border-0 p-6 shadow-2xl overflow-y-auto",
           theme === "dark"
-            ? "border-white/20 bg-slate-900"
-            : "border-slate-300 bg-white",
+            ? "bg-slate-900"
+            : "bg-white",
           className
         )}
         onClick={(e) => e.stopPropagation()}

@@ -33,3 +33,75 @@ body {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Animations */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.4s ease-out;
+}
+
+.animate-pulse-scale {
+  animation: pulse-scale 0.5s ease-out;
+}
+
+/* Dark mode select dropdown styling */
+@media (prefers-color-scheme: dark) {
+  select option {
+    background-color: rgb(30 41 59);
+    color: white;
+  }
+}
+
+/* Force dark mode select styling when dark theme is active */
+.dark select option {
+  background-color: rgb(30 41 59) !important;
+  color: white !important;
+}
+
+/* Ensure select elements have proper dark mode styling */
+.dark select {
+  background-color: rgb(30 41 59) !important;
+  color: white !important;
+}
+
+.dark select:focus {
+  background-color: rgb(30 41 59) !important;
+  color: white !important;
+}

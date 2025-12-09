@@ -14,6 +14,7 @@ export type MenuItem = {
   description: string;
   price: string;
   highlight?: boolean;
+  image?: string;
 };
 
 export type MenuCategory = {
@@ -281,8 +282,8 @@ export const menuData: MenuCategory[] = [
         price: "12,90 €",
       },
     ],
-  },
-  {
+      },
+      {
     id: "plats-prepares-commande",
     label: "Plats préparés sur commande",
     items: [
@@ -533,15 +534,15 @@ export function MenuSection({ data = menuData }: MenuSectionProps) {
                 }`}>
                   {item.price}
                 </span>
-                {item.highlight && (
+              {item.highlight && (
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                     theme === "dark"
                       ? "bg-amber-400/20 text-amber-200"
                       : "bg-amber-100 text-amber-700"
                   }`}>
-                    Coup de cœur
-                  </span>
-                )}
+                  Coup de cœur
+                </span>
+              )}
               </div>
               <a
                 href={getWhatsAppOrderUrl(item.name)}

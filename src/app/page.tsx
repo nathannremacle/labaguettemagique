@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { MenuSection, menuData } from "@/components/MenuSection";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -21,9 +20,22 @@ import Image from "next/image";
 import { useTheme } from "@/components/ThemeProvider";
 import { WhatsAppWidget } from "@/components/WhatsAppWidget";
 
+type RestaurantStatus = {
+  isOpen: boolean;
+  message?: string;
+};
+
 export default function Home() {
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [status, setStatus] = useState<RestaurantStatus>({ isOpen: true });
+
+  useEffect(() => {
+    fetch("/api/status")
+      .then((res) => res.json())
+      .then((data: RestaurantStatus) => setStatus(data))
+      .catch(() => setStatus({ isOpen: true }));
+  }, []);
 
   return (
     <div className={`min-h-screen transition-colors ${
@@ -102,10 +114,10 @@ export default function Home() {
             </a>
             <a href={`tel:${contactInfo.phone.mobileTel}`}>
               <Button variant="outline" className="min-w-[120px]">
-                <PhoneCall className="h-4 w-4" />
-                Appeler
-              </Button>
-            </a>
+              <PhoneCall className="h-4 w-4" />
+              Appeler
+            </Button>
+          </a>
           </div>
 
           {/* Mobile menu */}
@@ -183,15 +195,26 @@ export default function Home() {
                 </a>
                 <a href={`tel:${contactInfo.phone.mobileTel}`} className="flex-1">
                   <Button variant="outline" className="w-full">
-                    <PhoneCall className="h-4 w-4" />
-                    Appeler
-                  </Button>
-                </a>
-              </div>
+              <PhoneCall className="h-4 w-4" />
+              Appeler
+            </Button>
+          </a>
+        </div>
             </nav>
           </div>
         )}
       </header>
+
+      {/* Status Banner */}
+      {!status.isOpen && (
+        <div className={`w-full py-3 px-4 text-center ${
+          theme === "dark" ? "bg-red-900/50 text-red-200" : "bg-red-100 text-red-800"
+        }`}>
+          <p className="font-semibold">
+            {status.message || "Fermé actuellement"}
+          </p>
+        </div>
+      )}
 
       <main className="relative isolate">
         <div className={`pointer-events-none absolute inset-0 ${
@@ -217,24 +240,30 @@ export default function Home() {
                 sizes="100vw"
               />
             </div>
-            <div className={`absolute inset-0 ${
-              theme === "dark" ? "bg-slate-950/70" : "bg-white/80"
-            }`} />
+            {theme === "dark" && (
+            <div className="absolute inset-0 bg-slate-950/70" />
+            )}
 
             <div className="relative z-10 flex flex-col gap-8 px-6 py-12 sm:px-12 sm:py-16 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-2xl space-y-6">
                 <p className={`text-sm font-semibold uppercase tracking-[0.4em] ${
-                  theme === "dark" ? "text-amber-200" : "text-amber-600"
+                  theme === "dark" 
+                    ? "text-amber-200" 
+                    : "text-amber-600 drop-shadow-lg"
                 }`}>
                   Depuis 1998
                 </p>
                 <h1 className={`text-4xl font-black leading-tight sm:text-5xl lg:text-6xl ${
-                  theme === "dark" ? "text-white" : "text-slate-900"
+                  theme === "dark" 
+                    ? "text-white" 
+                    : "text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
                 }`}>
                   La meilleure friterie du Sart-Tilman
                 </h1>
                 <p className={`text-lg ${
-                  theme === "dark" ? "text-white/80" : "text-slate-700"
+                  theme === "dark" 
+                    ? "text-white/80" 
+                    : "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]"
                 }`}>
                   {contactInfo.description} Recettes maisons, frites croustillantes et ambiance
                   chaleureuse. Passez commande ou venez savourer nos
@@ -259,7 +288,7 @@ export default function Home() {
               <div className={`rounded-3xl border p-6 backdrop-blur ${
                 theme === "dark"
                   ? "border-white/10 bg-white/5"
-                  : "border-slate-300 bg-white/90"
+                  : "border-slate-300/50 bg-white/20"
               }`}>
                 <p className={`text-sm uppercase tracking-[0.3em] ${
                   theme === "dark" ? "text-amber-200" : "text-amber-600"
@@ -286,7 +315,14 @@ export default function Home() {
           </div>
         </section>
 
-        <MenuSection data={menuData} />
+        <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8 text-center">
+          <a href="/menu">
+            <Button className="bg-green-600 hover:bg-green-700 text-white text-lg px-8 py-6">
+              Voir le menu complet
+              <ArrowRight className="h-5 w-5 ml-2" />
+            </Button>
+          </a>
+        </section>
 
         <section
           id="about"
