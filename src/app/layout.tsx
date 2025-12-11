@@ -4,6 +4,7 @@ import "./globals.css";
 import { contactInfo, images } from "@/lib/website-data";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { CartProvider } from "@/contexts/CartContext";
+import { SuppressDevWarnings } from "@/components/SuppressDevWarnings";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,6 +58,7 @@ export default function RootLayout({
             `,
           }}
         />
+        <SuppressDevWarnings />
         <ThemeProvider>
           <CartProvider>
         {children}

@@ -533,7 +533,7 @@ export function MenuSection({ data = menuData }: MenuSectionProps) {
                 <span className={`text-2xl font-bold whitespace-nowrap ${
                   theme === "dark" ? "text-amber-300" : "text-amber-600"
                 }`}>
-                  {item.price}
+                  {item.price && !item.price.includes('€') ? `${item.price} €` : item.price}
                 </span>
               {item.highlight && (
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${

@@ -18,6 +18,16 @@ const nextConfig: NextConfig = {
         hostname: "picsum.photos",
       },
     ],
+    // Support local images from public folder
+    formats: ['image/webp', 'image/avif'],
+    // Disable image optimization for local files if needed (handled per-image with unoptimized prop)
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+  },
+  // Suppress Next.js 16 async params warnings (these are React DevTools serialization issues)
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
   },
 };
 

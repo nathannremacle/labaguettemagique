@@ -93,13 +93,33 @@ export function EditableMenuItem({
               <input
                 type="text"
                 value={editData.price || ""}
-                onChange={(e) => setEditData({ ...editData, price: e.target.value })}
+                onChange={(e) => {
+                  // Only allow numbers, comma, dot, dash, space, and euro symbol
+                  let value = e.target.value;
+                  // Remove euro symbol temporarily for processing
+                  value = value.replace(/€/g, '').trim();
+                  // Only allow numbers, comma, dot, dash, and spaces
+                  value = value.replace(/[^\d,.\-\s]/g, '');
+                  // Add euro symbol if there's content
+                  if (value) {
+                    value = value + ' €';
+                  }
+                  setEditData({ ...editData, price: value });
+                }}
+                onBlur={(e) => {
+                  // Ensure euro symbol is present on blur
+                  let value = e.target.value.trim();
+                  if (value && !value.includes('€')) {
+                    value = value + ' €';
+                    setEditData({ ...editData, price: value });
+                  }
+                }}
                 className={`w-full px-4 py-2 rounded-lg border ${
                   theme === "dark"
                     ? "border-white/10 bg-white/5 text-white placeholder-white/50"
                     : "border-slate-300 bg-white text-slate-900"
                 } focus:outline-none focus:ring-2 focus:ring-green-500`}
-                placeholder="Ex: 5,50 € - 6,50 €"
+                placeholder="Ex: 5,50 - 6,50"
               />
             </div>
             <div>
@@ -160,7 +180,7 @@ export function EditableMenuItem({
                   <div className="relative w-full h-48 rounded-lg overflow-hidden border">
                     <img
                       src={imagePreview}
-                      alt="Preview"
+                      alt="Aperçu"
                       className="w-full h-full object-cover"
                     />
                     <button
@@ -183,7 +203,7 @@ export function EditableMenuItem({
                   <div className="relative w-full h-48 rounded-lg overflow-hidden border">
                     <img
                       src={editData.image}
-                      alt="Current"
+                      alt="Image actuelle"
                       className="w-full h-full object-cover"
                     />
                   </div>

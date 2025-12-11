@@ -6,7 +6,7 @@ import { MenuSection, MenuCategory, MenuItem } from "@/components/MenuSection";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import { EditableMenuItem } from "@/components/admin/EditableMenuItem";
-import { LogOut, Plus, ToggleLeft, ToggleRight, Edit, Save, X, Sun, Moon, GripVertical, Trash2, Eye, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { LogOut, Plus, ToggleLeft, ToggleRight, Edit, Save, X, Sun, Moon, GripVertical, Trash2, Eye, Search, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -179,7 +179,7 @@ function SortableCategory({
                       <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
                         <img
                           src={item.image}
-                          alt={item.name || "Item image"}
+                          alt={item.name || "Image de l'article"}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             // Hide image on error
@@ -194,7 +194,7 @@ function SortableCategory({
                           <h3 className={`font-semibold mb-1 ${
                             theme === "dark" ? "text-white" : "text-slate-900"
                           }`}>
-                            {item.name || "Unnamed Item"}
+                            {item.name || "Article sans nom"}
                           </h3>
                           {item.description && (
                             <p className={`text-sm mb-2 ${
@@ -256,7 +256,7 @@ function SortableCategory({
             <p className={`text-sm italic ${
               theme === "dark" ? "text-white/50" : "text-slate-500"
             }`}>
-              Empty
+              Vide
             </p>
           )}
         </div>
@@ -283,7 +283,7 @@ function SortableCategory({
               <p className={`text-sm italic ${
                 theme === "dark" ? "text-white/50" : "text-slate-500"
               }`}>
-                Empty
+                Vide
               </p>
             )}
           </div>
@@ -371,6 +371,27 @@ export default function AdminDashboard() {
     return `${price} €`;
   };
 
+  // Helper function to format price input (only numbers, comma, dot, dash, space)
+  const formatPriceInput = (value: string): string => {
+    // Remove euro symbol if present (we'll add it back)
+    let cleaned = value.replace(/€/g, '').trim();
+    
+    // Only allow numbers, comma, dot, dash, and spaces
+    cleaned = cleaned.replace(/[^\d,.\-\s]/g, '');
+    
+    // Add euro symbol if there's content
+    if (cleaned) {
+      return cleaned + ' €';
+    }
+    return cleaned;
+  };
+
+  // Helper function to handle price input change
+  const handlePriceInputChange = (value: string, setter: (price: string) => void) => {
+    const formatted = formatPriceInput(value);
+    setter(formatted);
+  };
+
   // Get all items flattened with category info
   const getAllItems = () => {
     return menuData.flatMap(category =>
@@ -384,12 +405,16 @@ export default function AdminDashboard() {
 
   // Filter items based on search query
   const filteredItems = showAllItems
-    ? getAllItems().filter(item =>
-        searchQuery === "" ||
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.categoryLabel.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? getAllItems().filter(item => {
+        if (searchQuery === "") return true;
+        const query = searchQuery.toLowerCase();
+        return (
+          (item.name && item.name.toLowerCase().includes(query)) ||
+          (item.description && item.description.toLowerCase().includes(query)) ||
+          (item.categoryLabel && item.categoryLabel.toLowerCase().includes(query)) ||
+          (item.price && item.price.toLowerCase().includes(query))
+        );
+      })
     : [];
 
   useEffect(() => {
@@ -563,7 +588,7 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteItem = async (categoryId: string, itemId: number) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cet article ?")) return;
 
     try {
       const response = await fetch(
@@ -783,7 +808,7 @@ export default function AdminDashboard() {
         theme === "dark" ? "bg-slate-950" : "bg-white"
       }`}>
         <p className={theme === "dark" ? "text-white" : "text-slate-900"}>
-          Loading...
+          Chargement...
         </p>
       </div>
     );
@@ -806,9 +831,22 @@ export default function AdminDashboard() {
           <h1 className={`text-2xl font-bold ${
             theme === "dark" ? "text-white" : "text-slate-900"
           }`}>
-            Admin Panel
+            Panneau d'administration
           </h1>
           <div className="flex items-center gap-3">
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex items-center gap-2 rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                theme === "dark"
+                  ? "text-white border-white/20 hover:bg-white/10"
+                  : "text-slate-700 border-slate-300 hover:bg-slate-100"
+              }`}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Voir le site web
+            </a>
             <button
               onClick={toggleTheme}
               className={`p-2 rounded-full transition ${
@@ -816,7 +854,7 @@ export default function AdminDashboard() {
                   ? "text-white/70 hover:text-white hover:bg-white/10"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
-              aria-label="Toggle theme"
+              aria-label="Changer le thème"
             >
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
@@ -826,7 +864,7 @@ export default function AdminDashboard() {
               className="flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              Déconnexion
             </Button>
           </div>
         </div>
@@ -951,7 +989,7 @@ export default function AdminDashboard() {
               type="text"
               value={newCategory.label || ""}
               onChange={(e) => setNewCategory({ label: e.target.value })}
-              placeholder="Category name"
+              placeholder="Nom de la catégorie"
               className={`flex-1 px-4 py-2 rounded-lg border ${
                 theme === "dark"
                   ? "border-white/10 bg-white/5 text-white"
@@ -960,7 +998,7 @@ export default function AdminDashboard() {
             />
             <Button onClick={handleAddCategory} className="bg-green-600 hover:bg-green-700">
               <Plus className="h-4 w-4 mr-2" />
-              Add Category
+              Ajouter une catégorie
             </Button>
           </div>
         </div>
@@ -1036,9 +1074,20 @@ export default function AdminDashboard() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: 5,50 € - 6,50 €"
+                  placeholder="Ex: 5,50 - 6,50"
                   value={newItem.price || ""}
-                  onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                  onChange={(e) => {
+                    const formatted = formatPriceInput(e.target.value);
+                    setNewItem({ ...newItem, price: formatted });
+                  }}
+                  onBlur={(e) => {
+                    // Ensure euro symbol is present on blur
+                    let value = e.target.value.trim();
+                    if (value && !value.includes('€')) {
+                      value = value + ' €';
+                      setNewItem({ ...newItem, price: value });
+                    }
+                  }}
                   className={`w-full px-4 py-2 rounded-lg border ${
                     theme === "dark"
                       ? "border-white/10 bg-white/5 text-white placeholder-white/50"
@@ -1104,7 +1153,7 @@ export default function AdminDashboard() {
                     <div className="relative w-full h-48 rounded-lg overflow-hidden border">
                       <img
                         src={imagePreview}
-                        alt="Preview"
+                        alt="Aperçu"
                         className="w-full h-full object-cover"
                       />
                       <button
@@ -1127,7 +1176,7 @@ export default function AdminDashboard() {
                     <div className="relative w-full h-48 rounded-lg overflow-hidden border">
                       <img
                         src={newItem.image}
-                        alt="Current"
+                        alt="Image actuelle"
                         className="w-full h-full object-cover"
                       />
                     </div>

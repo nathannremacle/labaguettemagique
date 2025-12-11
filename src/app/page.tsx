@@ -63,7 +63,7 @@ export default function Home() {
           {/* Single bar navigation menu */}
           <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
             <a 
-              href="#menu" 
+              href="/menu" 
               className={`px-4 py-2 rounded-full transition ${
                 theme === "dark"
                   ? "text-white/70 hover:text-white hover:bg-white/10"
@@ -106,18 +106,22 @@ export default function Home() {
             >
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
-            <a href={getWhatsAppUrl()} target="_blank" rel="noopener noreferrer">
-              <Button className="min-w-[180px] bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all">
-                <WhatsAppIcon size={16} className="mr-2" />
-                Commander maintenant
-              </Button>
+            <a 
+              href={getWhatsAppUrl()} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="min-w-[180px] inline-flex items-center justify-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all px-5 py-2 text-sm font-semibold"
+            >
+              <WhatsAppIcon size={16} />
+              Commander maintenant
             </a>
-            <a href={`tel:${contactInfo.phone.mobileTel}`}>
-              <Button variant="outline" className="min-w-[120px]">
+            <a 
+              href={`tel:${contactInfo.phone.mobileTel}`}
+              className="min-w-[120px] inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-transparent px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
               <PhoneCall className="h-4 w-4" />
               Appeler
-            </Button>
-          </a>
+            </a>
           </div>
 
           {/* Mobile menu */}
@@ -154,7 +158,7 @@ export default function Home() {
           }`}>
             <nav className="mx-auto flex flex-col gap-1 px-4 py-4 max-w-6xl">
               <a
-                href="#menu"
+                href="/menu"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`px-4 py-3 rounded-lg transition ${
                   theme === "dark"
@@ -187,19 +191,23 @@ export default function Home() {
                 Contact
               </a>
               <div className="flex gap-2 mt-2 pt-4 border-t border-white/10">
-                <a href={getWhatsAppUrl()} target="_blank" rel="noopener noreferrer" className="flex-1">
-                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
-                    <WhatsAppIcon size={16} className="mr-2" />
-                    Commander
-                  </Button>
+                <a 
+                  href={getWhatsAppUrl()} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 text-sm font-semibold transition"
+                >
+                  <WhatsAppIcon size={16} />
+                  Commander
                 </a>
-                <a href={`tel:${contactInfo.phone.mobileTel}`} className="flex-1">
-                  <Button variant="outline" className="w-full">
-              <PhoneCall className="h-4 w-4" />
-              Appeler
-            </Button>
-          </a>
-        </div>
+                <a 
+                  href={`tel:${contactInfo.phone.mobileTel}`} 
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-transparent px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  <PhoneCall className="h-4 w-4" />
+                  Appeler
+                </a>
+              </div>
             </nav>
           </div>
         )}
@@ -270,17 +278,21 @@ export default function Home() {
                   spécialités sur place.
                 </p>
                 <div className="flex flex-wrap gap-4">
-                  <a href={getWhatsAppUrl()} target="_blank" rel="noopener noreferrer">
-                    <Button className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all text-base px-6 py-3">
-                      <WhatsAppIcon size={20} className="mr-2" />
-                      Commander sur WhatsApp
-                    </Button>
+                  <a 
+                    href={getWhatsAppUrl()} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all text-base px-6 py-3 font-semibold"
+                  >
+                    <WhatsAppIcon size={20} />
+                    Commander sur WhatsApp
                   </a>
-                  <a href="#menu">
-                    <Button variant="outline" className="text-base px-6 py-3 shadow-lg hover:shadow-xl transition-all">
-                      Voir le menu
-                      <ArrowRight className="h-5 w-5 ml-2" />
-                    </Button>
+                  <a 
+                    href="/menu"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold text-white transition hover:bg-white/10 shadow-lg hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    Voir le menu
+                    <ArrowRight className="h-5 w-5" />
                   </a>
                 </div>
               </div>
@@ -316,11 +328,12 @@ export default function Home() {
         </section>
 
         <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8 text-center">
-          <a href="/menu">
-            <Button className="bg-gradient-to-br from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white text-lg px-8 py-6 shadow-2xl hover:shadow-2xl transition-all duration-300 border border-white/10 font-semibold">
-              Voir le menu complet
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
+          <a 
+            href="/menu"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white text-lg px-8 py-6 shadow-2xl hover:shadow-2xl transition-all duration-300 border border-white/10 font-semibold"
+          >
+            Voir le menu complet
+            <ArrowRight className="h-5 w-5" />
           </a>
         </section>
 

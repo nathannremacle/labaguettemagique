@@ -26,6 +26,13 @@ function getItemImage(itemName: string, category: string, itemIndex: number): st
   return `/images/placeholders/${category}-${itemIndex}.jpg`;
 }
 
+// Helper function to format price with euro symbol
+function formatPrice(price: string | undefined): string {
+  if (!price) return "";
+  if (price.includes("€")) return price;
+  return `${price} €`;
+}
+
 export default function MenuPage() {
   const [menuData, setMenuData] = useState<MenuCategory[]>(defaultMenuData);
   const [loading, setLoading] = useState(true);
@@ -211,7 +218,8 @@ export default function MenuPage() {
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    unoptimized
+                    unoptimized={true}
+                    priority={false}
                     onError={(e) => {
                       // Fallback to a default placeholder if the original fails
                       const target = e.target as HTMLImageElement;
@@ -230,7 +238,7 @@ export default function MenuPage() {
                     <span className={`text-2xl font-bold whitespace-nowrap ${
                       theme === "dark" ? "text-amber-300" : "text-amber-600"
                     }`}>
-                      {item.price}
+                      {formatPrice(item.price)}
                     </span>
                     {item.highlight && (
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
@@ -242,7 +250,7 @@ export default function MenuPage() {
                       </span>
                     )}
                   </div>
-                  <Button
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       // If item has size options, open dialog. Otherwise add directly
@@ -255,11 +263,11 @@ export default function MenuPage() {
                         handleAddToCart(item, activeCategory, 1, "");
                       }
                     }}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white transition-all hover:scale-105 active:scale-95"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 text-sm font-semibold transition-all hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4" />
                     Ajouter au panier
-                  </Button>
+                  </button>
                 </CardContent>
               </Card>
             );
@@ -334,7 +342,7 @@ export default function MenuPage() {
                       <p className={`text-sm ${
                         theme === "dark" ? "text-white/70" : "text-slate-600"
                       }`}>
-                        {item.price}
+                        {formatPrice(item.price)}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         <button
@@ -445,7 +453,7 @@ export default function MenuPage() {
               <div className="flex items-center gap-2">
                 <span className={`text-4xl font-bold ${
                   theme === "dark" ? "text-amber-300" : "text-amber-600"
-                }`}>{selectedItem.price}</span>
+                }`}>{formatPrice(selectedItem.price)}</span>
               </div>
 
               {/* Size Selection */}
@@ -514,7 +522,7 @@ export default function MenuPage() {
                 </div>
               </div>
 
-              <Button
+              <button
                 onClick={() => {
                   if (getSizeOptions(selectedItem.price).length > 0 && !selectedSize) {
                     alert("Veuillez sélectionner une taille");
@@ -525,11 +533,11 @@ export default function MenuPage() {
                   setQuantity(1);
                   setSelectedSize("");
                 }}
-                className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-6 transition-all hover:scale-105 active:scale-95"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white px-6 py-4 text-base font-semibold transition-all hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500"
               >
-                <Plus className="h-5 w-5 mr-2" />
-                Ajouter au panier {quantity > 1 && `(${quantity})`}
-              </Button>
+                <Plus className="h-5 w-5" />
+                <span>Ajouter au panier {quantity > 1 && `(${quantity})`}</span>
+              </button>
             </div>
           </div>
         </Dialog>

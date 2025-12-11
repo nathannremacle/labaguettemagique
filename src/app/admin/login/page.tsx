@@ -31,10 +31,10 @@ export default function AdminLogin() {
         router.push("/admin");
         router.refresh();
       } else {
-        setError(data.error || "Invalid credentials");
+        setError(data.error || "Identifiants invalides");
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      setError("Une erreur s'est produite. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
@@ -52,12 +52,12 @@ export default function AdminLogin() {
         <h1 className={`text-3xl font-bold mb-2 ${
           theme === "dark" ? "text-white" : "text-slate-900"
         }`}>
-          Admin Login
+          Connexion administrateur
         </h1>
         <p className={`mb-6 ${
           theme === "dark" ? "text-white/70" : "text-slate-600"
         }`}>
-          Please sign in to access the admin panel
+          Veuillez vous connecter pour accéder au panneau d'administration
         </p>
 
         {error && (
@@ -71,7 +71,7 @@ export default function AdminLogin() {
             <label className={`block text-sm font-medium mb-2 ${
               theme === "dark" ? "text-white" : "text-slate-700"
             }`}>
-              Username
+              Nom d'utilisateur
             </label>
             <input
               type="text"
@@ -83,7 +83,7 @@ export default function AdminLogin() {
                   ? "border-white/10 bg-white/5 text-white placeholder-white/50"
                   : "border-slate-300 bg-white text-slate-900"
               } focus:outline-none focus:ring-2 focus:ring-green-500`}
-              placeholder="Enter username"
+              placeholder="Entrez le nom d'utilisateur"
             />
           </div>
 
@@ -91,7 +91,7 @@ export default function AdminLogin() {
             <label className={`block text-sm font-medium mb-2 ${
               theme === "dark" ? "text-white" : "text-slate-700"
             }`}>
-              Password
+              Mot de passe
             </label>
             <input
               type="password"
@@ -103,7 +103,7 @@ export default function AdminLogin() {
                   ? "border-white/10 bg-white/5 text-white placeholder-white/50"
                   : "border-slate-300 bg-white text-slate-900"
               } focus:outline-none focus:ring-2 focus:ring-green-500`}
-              placeholder="Enter password"
+              placeholder="Entrez le mot de passe"
             />
           </div>
 
@@ -112,7 +112,7 @@ export default function AdminLogin() {
             disabled={loading}
             className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Connexion..." : "Se connecter"}
           </Button>
         </form>
       </div>
