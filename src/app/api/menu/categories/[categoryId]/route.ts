@@ -1,28 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/middleware";
-import fs from "fs";
-import path from "path";
-
-const MENU_DATA_PATH = path.join(process.cwd(), "data", "menu.json");
-
-function readMenuData() {
-  if (fs.existsSync(MENU_DATA_PATH)) {
-    try {
-      return JSON.parse(fs.readFileSync(MENU_DATA_PATH, "utf-8"));
-    } catch (error) {
-      return [];
-    }
-  }
-  return [];
-}
-
-function writeMenuData(data: any) {
-  const dataDir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-  fs.writeFileSync(MENU_DATA_PATH, JSON.stringify(data, null, 2));
-}
+import { getCategoryById, updateCategory, deleteCategory, getItemsByCategory } from "@/lib/menu-db";
 
 // GET category by ID
 export async function GET(
@@ -35,8 +13,7 @@ export async function GET(
   }
   try {
     const { categoryId } = await params;
-    const data = readMenuData();
-    const category = data.find((cat: any) => cat.id === categoryId);
+    const category = getCategoryById(categoryId);
     
     if (!category) {
       return NextResponse.json(
@@ -45,10 +22,24 @@ export async function GET(
       );
     }
     
-    return NextResponse.json(category);
-  } catch (error) {
+    const items = getItemsByCategory(categoryId);
+    
+    return NextResponse.json({
+      id: category.id,
+      label: category.label,
+      items: items.map(item => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        image: item.image || undefined,
+        highlight: Boolean(item.highlight),
+      })),
+    });
+  } catch (error: any) {
+    console.error("Error reading category:", error);
     return NextResponse.json(
-      { error: "Failed to read category" },
+      { error: "Failed to read category", details: error.message || String(error) },
       { status: 500 }
     );
   }
@@ -66,24 +57,43 @@ export async function PUT(
 
   try {
     const { categoryId } = await params;
-    const updates = await request.json();
-    const data = readMenuData();
-    const index = data.findIndex((cat: any) => cat.id === categoryId);
     
-    if (index === -1) {
+    if (!categoryId) {
+      return NextResponse.json(
+        { error: "Category ID is required" },
+        { status: 400 }
+      );
+    }
+    
+    const updates = await request.json();
+    
+    if (!updates.label || typeof updates.label !== 'string' || updates.label.trim() === '') {
+      return NextResponse.json(
+        { error: "Category label is required and cannot be empty" },
+        { status: 400 }
+      );
+    }
+    
+    const category = updateCategory(categoryId, { label: updates.label.trim() });
+    
+    if (!category) {
       return NextResponse.json(
         { error: "Category not found" },
         { status: 404 }
       );
     }
     
-    data[index] = { ...data[index], ...updates };
-    writeMenuData(data);
-    
-    return NextResponse.json({ success: true, category: data[index] });
-  } catch (error) {
+    return NextResponse.json({ 
+      success: true, 
+      category: {
+        id: category.id,
+        label: category.label,
+      }
+    });
+  } catch (error: any) {
+    console.error("Error updating category:", error);
     return NextResponse.json(
-      { error: "Failed to update category" },
+      { error: "Failed to update category", details: error.message || String(error) },
       { status: 500 }
     );
   }
@@ -101,14 +111,20 @@ export async function DELETE(
 
   try {
     const { categoryId } = await params;
-    const data = readMenuData();
-    const filtered = data.filter((cat: any) => cat.id !== categoryId);
-    writeMenuData(filtered);
+    const success = deleteCategory(categoryId);
+    
+    if (!success) {
+      return NextResponse.json(
+        { error: "Category not found" },
+        { status: 404 }
+      );
+    }
     
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Error deleting category:", error);
     return NextResponse.json(
-      { error: "Failed to delete category" },
+      { error: "Failed to delete category", details: error.message || String(error) },
       { status: 500 }
     );
   }

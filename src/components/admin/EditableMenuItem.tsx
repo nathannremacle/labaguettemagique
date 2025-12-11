@@ -10,15 +10,15 @@ import Image from "next/image";
 interface EditableMenuItemProps {
   item: MenuItem;
   categoryId: string;
-  itemIndex: number;
-  onSave: (categoryId: string, itemIndex: number, item: MenuItem) => void;
-  onDelete: (categoryId: string, itemIndex: number) => void;
+  itemId: number;
+  onSave: (categoryId: string, itemId: number, item: MenuItem) => void;
+  onDelete: (categoryId: string, itemId: number) => void;
 }
 
 export function EditableMenuItem({
   item,
   categoryId,
-  itemIndex,
+  itemId,
   onSave,
   onDelete,
 }: EditableMenuItemProps) {
@@ -29,7 +29,7 @@ export function EditableMenuItem({
   const { theme } = useTheme();
 
   const handleSave = () => {
-    onSave(categoryId, itemIndex, editData);
+    onSave(categoryId, itemId, editData);
     setIsEditing(false);
   };
 
@@ -250,11 +250,14 @@ export function EditableMenuItem({
   }
 
   return (
-    <div className={`p-4 rounded-lg border ${
-      theme === "dark"
-        ? "border-white/10 bg-white/5"
-        : "border-slate-200 bg-white"
-    }`}>
+    <div 
+      data-item-id={itemId}
+      className={`p-4 rounded-lg border ${
+        theme === "dark"
+          ? "border-white/10 bg-white/5"
+          : "border-slate-200 bg-white"
+      }`}
+    >
       <div className="flex gap-4">
         {item.image && (
           <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
@@ -281,7 +284,7 @@ export function EditableMenuItem({
           <p className={`text-sm font-semibold ${
             theme === "dark" ? "text-amber-300" : "text-amber-600"
           }`}>
-            {item.price}
+            {item.price && !item.price.includes('€') ? `${item.price} €` : item.price}
           </p>
         </div>
         <div className="flex gap-2">
@@ -289,13 +292,14 @@ export function EditableMenuItem({
             onClick={() => setIsEditing(true)}
             variant="outline"
             className="text-sm px-3 py-2"
+            aria-label="Edit"
           >
             <Edit className="h-4 w-4" />
           </Button>
           <Button
             onClick={() => {
               if (confirm("Are you sure you want to delete this item?")) {
-                onDelete(categoryId, itemIndex);
+                onDelete(categoryId, itemId);
               }
             }}
             variant="outline"

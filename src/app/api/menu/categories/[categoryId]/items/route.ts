@@ -1,28 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/middleware";
-import fs from "fs";
-import path from "path";
-
-const MENU_DATA_PATH = path.join(process.cwd(), "data", "menu.json");
-
-function readMenuData() {
-  if (fs.existsSync(MENU_DATA_PATH)) {
-    try {
-      return JSON.parse(fs.readFileSync(MENU_DATA_PATH, "utf-8"));
-    } catch (error) {
-      return [];
-    }
-  }
-  return [];
-}
-
-function writeMenuData(data: any) {
-  const dataDir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-  fs.writeFileSync(MENU_DATA_PATH, JSON.stringify(data, null, 2));
-}
+import { getCategoryById, createItem } from "@/lib/menu-db";
 
 // POST - Create new item in category
 export async function POST(
@@ -37,27 +15,48 @@ export async function POST(
   try {
     const { categoryId } = await params;
     const newItem = await request.json();
-    const data = readMenuData();
-    const categoryIndex = data.findIndex((cat: any) => cat.id === categoryId);
     
-    if (categoryIndex === -1) {
+    // Validate category exists
+    const category = getCategoryById(categoryId);
+    if (!category) {
       return NextResponse.json(
         { error: "Category not found" },
         { status: 404 }
       );
     }
     
-    if (!data[categoryIndex].items) {
-      data[categoryIndex].items = [];
+    // Validate required fields
+    if (!newItem.name || !newItem.description || !newItem.price) {
+      return NextResponse.json(
+        { error: "Name, description, and price are required" },
+        { status: 400 }
+      );
     }
     
-    data[categoryIndex].items.push(newItem);
-    writeMenuData(data);
+    const item = createItem({
+      category_id: categoryId,
+      name: String(newItem.name),
+      description: String(newItem.description),
+      price: String(newItem.price),
+      image: newItem.image || undefined,
+      highlight: Boolean(newItem.highlight || false),
+    });
     
-    return NextResponse.json({ success: true, item: newItem });
-  } catch (error) {
+    return NextResponse.json({ 
+      success: true, 
+      item: {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        image: item.image || undefined,
+        highlight: Boolean(item.highlight),
+      }
+    });
+  } catch (error: any) {
+    console.error("Error creating item:", error);
     return NextResponse.json(
-      { error: "Failed to create item" },
+      { error: "Failed to create item", details: error.message || String(error) },
       { status: 500 }
     );
   }

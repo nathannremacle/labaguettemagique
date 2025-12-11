@@ -10,6 +10,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 
 export type MenuItem = {
+  id?: number;
   name: string;
   description: string;
   price: string;

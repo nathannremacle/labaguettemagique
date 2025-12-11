@@ -317,7 +317,7 @@ export default function Home() {
 
         <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8 text-center">
           <a href="/menu">
-            <Button className="bg-green-600 hover:bg-green-700 text-white text-lg px-8 py-6">
+            <Button className="bg-gradient-to-br from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white text-lg px-8 py-6 shadow-2xl hover:shadow-2xl transition-all duration-300 border border-white/10 font-semibold">
               Voir le menu complet
               <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
