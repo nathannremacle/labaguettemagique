@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }));
     
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error reading menu data:", error);
     return NextResponse.json([], { status: 500 });
   }

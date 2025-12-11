@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   Clock3,
@@ -18,12 +17,135 @@ import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { contactInfo, openingHours, images, getWhatsAppUrl } from "@/lib/website-data";
 import Image from "next/image";
 import { useTheme } from "@/components/ThemeProvider";
-import { WhatsAppWidget } from "@/components/WhatsAppWidget";
+import { createSlug } from "@/lib/utils";
 
 type RestaurantStatus = {
   isOpen: boolean;
   message?: string;
 };
+
+type FooterItem = {
+  id: number;
+  title: string;
+  description?: string;
+  icon?: string;
+  link?: string;
+  menu_item_name?: string;
+  menu_category_id?: string;
+};
+
+// Footer Items Section Component
+function FooterItemsSection() {
+  const { theme } = useTheme();
+  const [footerItems, setFooterItems] = useState<FooterItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/footer")
+      .then((res) => res.json())
+      .then((data: FooterItem[]) => {
+        if (Array.isArray(data)) {
+          setFooterItems(data);
+          // Trigger animation after items are loaded
+          setTimeout(() => setIsVisible(true), 100);
+        }
+      })
+      .catch(() => {
+        // Silently fail - footer items are optional
+        setFooterItems([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || footerItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className={`mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8 ${
+      theme === "dark" ? "bg-slate-900/50" : "bg-slate-50"
+    }`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {footerItems.map((item, index) => {
+          // Generate link URL: Priority 1 - menu item, Priority 2 - regular link
+          let itemUrl: string | null = null;
+          if (item.menu_category_id && item.menu_item_name) {
+            // Generate menu item URL
+            const categorySlug = createSlug(item.menu_category_id);
+            const itemSlug = createSlug(item.menu_item_name);
+            itemUrl = `/menu/${categorySlug}/${itemSlug}`;
+          } else if (item.link) {
+            // Use regular link
+            itemUrl = item.link;
+          }
+
+          const hasLink = itemUrl !== null;
+          const animationDelay = index * 150; // Stagger animation delay
+
+          const content = (
+            <div 
+              className={`p-6 rounded-2xl border transition-all duration-300 ease-out ${
+                theme === "dark"
+                  ? "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20"
+                  : "border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300"
+              } ${hasLink ? "cursor-pointer hover:scale-105 hover:shadow-lg" : ""} ${
+                isVisible ? "animate-fade-in-up" : "opacity-0 translate-y-4"
+              }`}
+              style={{
+                animationDelay: isVisible ? `${animationDelay}ms` : undefined
+              }}
+            >
+              {item.icon && (
+                <div 
+                  className={`mb-4 text-3xl transition-transform duration-300 ${
+                    theme === "dark" ? "text-amber-300" : "text-amber-600"
+                  } ${hasLink ? "group-hover:scale-110 group-hover:rotate-6" : ""} ${
+                    isVisible ? "animate-icon-bounce-in" : "opacity-0"
+                  }`}
+                  style={{
+                    animationDelay: isVisible ? `${animationDelay + 200}ms` : undefined
+                  }}
+                >
+                  {item.icon}
+                </div>
+              )}
+              <h3 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${
+                theme === "dark" ? "text-white" : "text-slate-900"
+              } ${hasLink ? "group-hover:text-amber-500" : ""}`}>
+                {item.title}
+              </h3>
+              {item.description && (
+                <p className={`text-sm transition-colors duration-300 ${
+                  theme === "dark" ? "text-white/70" : "text-slate-600"
+                }`}>
+                  {item.description}
+                </p>
+              )}
+            </div>
+          );
+
+          if (hasLink && itemUrl) {
+            const isExternalLink = itemUrl.startsWith("http");
+            return (
+              <a
+                key={item.id}
+                href={itemUrl}
+                target={isExternalLink ? "_blank" : undefined}
+                rel={isExternalLink ? "noopener noreferrer" : undefined}
+                className="block group"
+              >
+                {content}
+              </a>
+            );
+          }
+
+          return <div key={item.id} className="group">{content}</div>;
+        })}
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   const { theme, toggleTheme } = useTheme();
@@ -224,14 +346,20 @@ export default function Home() {
         </div>
       )}
 
-      <main className="relative isolate">
+      <main className={`relative isolate ${
+        theme === "dark" 
+          ? "bg-slate-950" 
+          : "bg-white"
+      }`}>
         <div className={`pointer-events-none absolute inset-0 ${
           theme === "dark"
             ? "bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.15),_transparent_60%)]"
             : "bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.05),_transparent_60%)]"
         }`} />
 
-        <section className="relative mx-auto mt-8 w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="h-8" />
+
+        <section className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className={`relative overflow-hidden rounded-[32px] border ${
             theme === "dark"
               ? "border-white/10 bg-slate-900"
@@ -252,7 +380,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-slate-950/70" />
             )}
 
-            <div className="relative z-10 flex flex-col gap-8 px-6 py-12 sm:px-12 sm:py-16 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative z-10 flex flex-col gap-8 px-6 py-12 sm:px-12 sm:py-16 lg:flex-row lg:items-center lg:justify-between my-8">
               <div className="max-w-2xl space-y-6">
                 <p className={`text-sm font-semibold uppercase tracking-[0.4em] ${
                   theme === "dark" 
@@ -326,6 +454,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Footer Items Section */}
+        <FooterItemsSection />
 
         <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8 text-center">
           <a 
@@ -422,7 +553,7 @@ export default function Home() {
 
       <footer
         id="contact"
-        className={`border-t ${
+        className={`mt-8 border-t pt-8 ${
           theme === "dark"
             ? "border-white/10 bg-slate-900/80"
             : "border-slate-200 bg-slate-50"
@@ -509,20 +640,20 @@ export default function Home() {
                 href="https://www.facebook.com/ben.karim.2904/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+                className={`inline-flex h-12 w-12 items-center justify-center rounded-full border transition ${
                   theme === "dark"
                     ? "border-white/20 text-white/70 hover:border-white hover:text-white"
                     : "border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-900"
                 }`}
                 aria-label="Facebook"
               >
-                <Facebook className="h-4 w-4" />
+                <Facebook size={24} />
               </a>
             </div>
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10">
               <iframe
                 src={`https://www.google.com/maps?q=${encodeURIComponent(contactInfo.address.full)}+Belgique&output=embed`}
                 width="100%"
@@ -534,6 +665,17 @@ export default function Home() {
                 className="h-full w-full"
                 title={`Localisation ${contactInfo.name} - ${contactInfo.address.full}`}
               />
+              {/* Mobile Google Maps button overlay */}
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(contactInfo.address.full)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="md:hidden absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 rounded-full bg-white hover:bg-gray-100 text-gray-900 shadow-lg hover:shadow-xl transition-all px-4 py-2.5 text-sm font-semibold border border-gray-200 active:scale-95"
+                aria-label="Ouvrir dans Google Maps"
+              >
+                <MapPin className="h-4 w-4 text-blue-600" />
+                <span>Ouvrir dans Maps</span>
+              </a>
             </div>
             <p className={`text-xs ${
               theme === "dark" ? "text-white/50" : "text-slate-400"

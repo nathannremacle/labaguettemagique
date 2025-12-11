@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
-import React from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Tabs } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { menuCategories, getWhatsAppUrl } from "@/lib/website-data";
+import { getWhatsAppUrl } from "@/lib/website-data";
 import { useTheme } from "@/components/ThemeProvider";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { useCart } from "@/contexts/CartContext";
@@ -15,9 +15,7 @@ import { ShoppingCart, Plus, Minus, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Toast } from "@/components/ui/toast";
-
-// Import default menu data as fallback
-import { menuData as defaultMenuData } from "@/components/MenuSection";
+import { cn, createSlug } from "@/lib/utils";
 
 // Helper function to get local placeholder image based on category and item index
 function getItemImage(itemName: string, category: string, itemIndex: number): string {
@@ -34,7 +32,10 @@ function formatPrice(price: string | undefined): string {
 }
 
 export default function MenuPage() {
-  const [menuData, setMenuData] = useState<MenuCategory[]>(defaultMenuData);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [menuData, setMenuData] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const tabs = menuData.map((category) => ({ value: category.id, label: category.label }));
   const [activeCategory, setActiveCategory] = useState(tabs[0]?.value ?? "");
@@ -45,7 +46,9 @@ export default function MenuPage() {
   const [cartButtonPulse, setCartButtonPulse] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>("");
-  const cartButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [highlightedItem, setHighlightedItem] = useState<string | null>(null);
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const cartButtonRef = useRef<HTMLButtonElement>(null);
   const { theme } = useTheme();
   const cart = useCart();
 
@@ -72,9 +75,10 @@ export default function MenuPage() {
           }
         }
       } catch (error) {
+        // Log error but don't expose details to user
         console.error("Failed to load menu:", error);
-        // Use default data on error
-        setMenuData(defaultMenuData);
+        // Keep empty state on error - user will see empty menu
+        setMenuData([]);
       } finally {
         setLoading(false);
       }
@@ -82,6 +86,82 @@ export default function MenuPage() {
 
     loadMenuData();
   }, []);
+
+  // Helper function to find item by slug
+  const findItemBySlug = (categorySlug: string, itemSlug: string): { category: MenuCategory | null; item: MenuItem | null } => {
+    // First try to find category by matching slug
+    let category = menuData.find(cat => createSlug(cat.id) === categorySlug);
+    
+    // If not found, try matching by id directly
+    if (!category) {
+      category = menuData.find(cat => cat.id === categorySlug);
+    }
+    
+    if (!category) {
+      return { category: null, item: null };
+    }
+    
+    // Find item by matching slug of name
+    let item = category.items?.find(i => createSlug(i.name) === itemSlug);
+    
+    // If not found, try case-insensitive name match
+    if (!item) {
+      item = category.items?.find(i => i.name.toLowerCase() === itemSlug.toLowerCase());
+    }
+    
+    return { category, item: item || null };
+  };
+
+  // Handle deep linking from URL path or query parameters
+  useEffect(() => {
+    if (!loading && menuData.length > 0) {
+      let categoryParam: string | null = null;
+      let itemParam: string | null = null;
+      
+      // Check if we're on a path-based route like /menu/[category]/[item]
+      const pathParts = pathname.split("/").filter(Boolean);
+      if (pathParts.length >= 3 && pathParts[0] === "menu") {
+        // Extract category and item from path
+        categoryParam = pathParts[1];
+        itemParam = pathParts[2];
+      } else {
+        // Fall back to query parameters for backward compatibility
+        itemParam = searchParams.get("item");
+        categoryParam = searchParams.get("category");
+      }
+      
+      if (itemParam && categoryParam) {
+        const { category, item } = findItemBySlug(categoryParam, itemParam);
+        
+        if (category && item) {
+          // Switch to the category
+          setActiveCategory(category.id);
+          
+          // Small delay to ensure category switch and rendering
+          setTimeout(() => {
+            // Scroll to item
+            const itemKey = `${category.id}-${item.name}`;
+            const itemElement = itemRefs.current.get(itemKey);
+            if (itemElement) {
+              itemElement.scrollIntoView({ 
+                behavior: "smooth", 
+                block: "center" 
+              });
+              
+              // Highlight the item
+              setHighlightedItem(itemKey);
+              setTimeout(() => setHighlightedItem(null), 2000);
+            }
+            
+            // Open the item dialog (focus mode)
+            setSelectedItem(item);
+            setQuantity(1);
+            setSelectedSize("");
+          }, 300);
+        }
+      }
+    }
+  }, [loading, menuData, searchParams, pathname]);
 
   const currentItems = useMemo(
     () => menuData.find((category) => category.id === activeCategory)?.items ?? [],
@@ -193,6 +273,13 @@ export default function MenuPage() {
             }`}>
               Chargement du menu...
             </div>
+          ) : menuData.length === 0 ? (
+            <div className={`text-center py-16 ${
+              theme === "dark" ? "text-white/70" : "text-slate-600"
+            }`}>
+              <p className="text-lg mb-2">Aucun menu disponible</p>
+              <p className="text-sm">Le menu sera bientôt disponible.</p>
+            </div>
           ) : (
             <>
               <Tabs
@@ -205,11 +292,34 @@ export default function MenuPage() {
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {currentItems.map((item, index) => {
               const imageUrl = item.image || getItemImage(item.name, activeCategory, index);
+              const itemKey = `${activeCategory}-${item.name}`;
+              const isHighlighted = highlightedItem === itemKey;
               return (
+              <div
+                key={itemKey}
+                ref={(el) => {
+                  if (el) {
+                    itemRefs.current.set(itemKey, el);
+                  } else {
+                    itemRefs.current.delete(itemKey);
+                  }
+                }}
+                className={isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 rounded-2xl transition-all" : ""}
+              >
               <Card
-                key={`${activeCategory}-${index}-${item.name}`}
-                className={item.highlight ? "border-amber-400/40 bg-white/10" : undefined}
-                onClick={() => setSelectedItem(item)}
+                className={cn(
+                  item.highlight ? "border-amber-400/40 bg-white/10" : undefined,
+                  "cursor-pointer"
+                )}
+                onClick={() => {
+                  // Navigate to the item URL and open dialog
+                  const categorySlug = createSlug(activeCategory);
+                  const itemSlug = createSlug(item.name);
+                  router.push(`/menu/${categorySlug}/${itemSlug}`);
+                  setSelectedItem(item);
+                  setQuantity(1);
+                  setSelectedSize("");
+                }}
               >
                 <div className="relative w-full h-48 overflow-hidden rounded-t-lg bg-slate-200 dark:bg-slate-800">
                   <Image
@@ -270,6 +380,7 @@ export default function MenuPage() {
                   </button>
                 </CardContent>
               </Card>
+              </div>
             );
             }            )}
               </div>
@@ -278,141 +389,147 @@ export default function MenuPage() {
         </div>
       </main>
 
-      {/* Cart Sidebar */}
-      {cartOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div
-            className="flex-1 bg-black/50"
-            onClick={() => setCartOpen(false)}
-          />
-          <div className={`w-full max-w-md flex flex-col ${
-            theme === "dark" ? "bg-slate-900" : "bg-white"
-          } shadow-xl`}>
-            <div className={`flex items-center justify-between p-4 border-b ${
-              theme === "dark" ? "border-white/10" : "border-slate-200"
-            }`}>
-              <h2 className={`text-xl font-bold ${
-                theme === "dark" ? "text-white" : "text-slate-900"
+      {/* Cart Dialog */}
+      <Dialog
+        isOpen={cartOpen}
+        onClose={() => setCartOpen(false)}
+        title={`Panier (${cart.getTotalItems()})`}
+      >
+        <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
+          {/* Cart Items */}
+          <div className="space-y-4">
+            {cart.items.length === 0 ? (
+              <div className={`text-center py-12 ${
+                theme === "dark" ? "text-white/70" : "text-slate-600"
               }`}>
-                Panier ({cart.getTotalItems()})
-              </h2>
-              <button
-                onClick={() => setCartOpen(false)}
-                className={`p-2 rounded-lg ${
-                  theme === "dark" ? "hover:bg-white/10" : "hover:bg-slate-100"
-                }`}
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {cart.items.length === 0 ? (
-                <p className={`text-center ${
-                  theme === "dark" ? "text-white/70" : "text-slate-600"
-                }`}>
-                  Votre panier est vide
-                </p>
-              ) : (
-                cart.items.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-4 p-4 rounded-lg border ${
-                      theme === "dark"
-                        ? "border-white/10 bg-white/5"
-                        : "border-slate-200 bg-slate-50"
-                    }`}
-                  >
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                      <Image
-                        src={item.image || getItemImage(item.name, item.categoryId || activeCategory, index)}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                        sizes="80px"
-                        unoptimized
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`font-semibold ${
+                <ShoppingCart className={`h-16 w-16 mx-auto mb-4 ${
+                  theme === "dark" ? "text-white/20" : "text-slate-300"
+                }`} />
+                <p className="text-lg font-semibold mb-2">Votre panier est vide</p>
+                <p className="text-sm">Ajoutez des articles pour commencer votre commande</p>
+              </div>
+            ) : (
+              cart.items.map((item, index) => (
+                <div
+                  key={index}
+                  className={`flex gap-4 p-4 sm:p-5 rounded-xl border ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
+                >
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden flex-shrink-0">
+                    <Image
+                      src={item.image || getItemImage(item.name, item.categoryId || activeCategory, index)}
+                      alt={item.name}
+                      fill
+                      className="object-cover"
+                      sizes="96px"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`font-semibold text-base sm:text-lg mb-1 ${
+                      theme === "dark" ? "text-white" : "text-slate-900"
+                    }`}>
+                      {item.name}
+                    </h3>
+                    <p className={`text-sm sm:text-base mb-3 ${
+                      theme === "dark" ? "text-white/70" : "text-slate-600"
+                    }`}>
+                      {formatPrice(item.price)}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => cart.updateQuantity(item.name, item.categoryId, item.quantity - 1)}
+                        className={cn(
+                          "w-10 h-10 sm:w-12 sm:h-12 rounded-xl border-2 flex items-center justify-center transition-all",
+                          "touch-manipulation active:scale-90",
+                          theme === "dark"
+                            ? "border-white/20 bg-white/5 text-white hover:bg-white/10 active:bg-white/20"
+                            : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50 active:bg-slate-100"
+                        )}
+                        aria-label="Diminuer la quantité"
+                      >
+                        <Minus className="h-5 w-5" />
+                      </button>
+                      <span className={`min-w-[40px] text-center font-bold text-lg sm:text-xl ${
                         theme === "dark" ? "text-white" : "text-slate-900"
                       }`}>
-                        {item.name}
-                      </h3>
-                      <p className={`text-sm ${
-                        theme === "dark" ? "text-white/70" : "text-slate-600"
-                      }`}>
-                        {formatPrice(item.price)}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <button
-                          onClick={() => cart.updateQuantity(item.name, item.categoryId, item.quantity - 1)}
-                          className={`p-1 rounded transition-all hover:scale-110 active:scale-95 ${
-                            theme === "dark" ? "hover:bg-white/10" : "hover:bg-slate-200"
-                          }`}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className={`min-w-[32px] text-center font-semibold ${
-                          theme === "dark" ? "text-white" : "text-slate-900"
-                        }`}>
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => {
-                            cart.updateQuantity(item.name, item.categoryId, item.quantity + 1);
-                            setToastMessage(`${item.name} (x${item.quantity + 1}) ajouté !`);
-                            setToastVisible(true);
-                          }}
-                          className={`p-1 rounded transition-all hover:scale-110 active:scale-95 ${
-                            theme === "dark" ? "hover:bg-white/10" : "hover:bg-slate-200"
-                          }`}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => {
+                          cart.updateQuantity(item.name, item.categoryId, item.quantity + 1);
+                          setToastMessage(`${item.name} (x${item.quantity + 1}) ajouté !`);
+                          setToastVisible(true);
+                        }}
+                        className={cn(
+                          "w-10 h-10 sm:w-12 sm:h-12 rounded-xl border-2 flex items-center justify-center transition-all",
+                          "touch-manipulation active:scale-90",
+                          theme === "dark"
+                            ? "border-white/20 bg-white/5 text-white hover:bg-white/10 active:bg-white/20"
+                            : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50 active:bg-slate-100"
+                        )}
+                        aria-label="Augmenter la quantité"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => cart.removeItem(item.name, item.categoryId)}
-                      className={`p-2 rounded-lg ${
-                        theme === "dark" ? "hover:bg-white/10 text-red-400" : "hover:bg-slate-200 text-red-600"
-                      }`}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
                   </div>
-                ))
-              )}
-            </div>
-
-            {cart.items.length > 0 && (
-              <div className={`p-4 border-t space-y-4 ${
-                theme === "dark" ? "border-white/10" : "border-slate-200"
-              }`}>
-                <div className="flex justify-between items-center">
-                  <span className={`text-lg font-semibold ${
-                    theme === "dark" ? "text-white" : "text-slate-900"
-                  }`}>
-                    Total:
-                  </span>
-                  <span className={`text-2xl font-bold ${
-                    theme === "dark" ? "text-amber-300" : "text-amber-600"
-                  }`}>
-                    {cart.getTotalPrice()}
-                  </span>
+                  <button
+                    onClick={() => cart.removeItem(item.name, item.categoryId)}
+                    className={cn(
+                      "p-2 sm:p-3 rounded-xl transition-all",
+                      "touch-manipulation active:scale-90",
+                      theme === "dark" 
+                        ? "hover:bg-white/10 text-red-400 active:bg-white/20" 
+                        : "hover:bg-slate-200 text-red-600 active:bg-slate-300"
+                    )}
+                    aria-label="Retirer du panier"
+                  >
+                    <X className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </button>
                 </div>
-                <Button
-                  onClick={handleSendOrder}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-6"
-                >
-                  <WhatsAppIcon size={24} className="mr-2" />
-                  Commander sur WhatsApp
-                </Button>
-              </div>
+              ))
             )}
           </div>
+
+          {/* Cart Footer */}
+          {cart.items.length > 0 && (
+            <div className={`pt-6 border-t space-y-4 sm:space-y-6 ${
+              theme === "dark" ? "border-white/10" : "border-slate-200"
+            }`}>
+              <div className="flex justify-between items-center">
+                <span className={`text-lg sm:text-xl font-semibold ${
+                  theme === "dark" ? "text-white" : "text-slate-900"
+                }`}>
+                  Total:
+                </span>
+                <span className={`text-2xl sm:text-3xl font-bold ${
+                  theme === "dark" ? "text-amber-300" : "text-amber-600"
+                }`}>
+                  {cart.getTotalPrice()}
+                </span>
+              </div>
+              <Button
+                onClick={handleSendOrder}
+                className={cn(
+                  "w-full bg-green-600 hover:bg-green-700 text-white",
+                  "text-base sm:text-lg font-semibold py-4 sm:py-6",
+                  "transition-all hover:scale-[1.02] active:scale-95",
+                  "touch-manipulation min-h-[56px]",
+                  "shadow-lg shadow-green-600/30 hover:shadow-xl hover:shadow-green-600/40",
+                  "flex items-center justify-center gap-2"
+                )}
+              >
+                <WhatsAppIcon size={24} />
+                Commander sur WhatsApp
+              </Button>
+            </div>
+          )}
         </div>
-      )}
+      </Dialog>
 
       {/* Item Details Dialog */}
       {selectedItem && (
@@ -425,8 +542,9 @@ export default function MenuPage() {
           }}
           title={selectedItem.name}
         >
-          <div className="space-y-6 max-w-4xl mx-auto">
-            <div className="relative w-full h-96 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800">
+          <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
+            {/* Image */}
+            <div className="relative w-full h-64 sm:h-96 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 shadow-lg">
               <Image
                 src={selectedItem.image || getItemImage(selectedItem.name, activeCategory, currentItems.findIndex(i => i.name === selectedItem.name))}
                 alt={selectedItem.name}
@@ -445,39 +563,51 @@ export default function MenuPage() {
               />
             </div>
             
-            <div className="space-y-4">
-              <p className={`text-xl leading-relaxed ${
-                theme === "dark" ? "text-white/90" : "text-slate-700"
-              }`}>{selectedItem.description}</p>
+            <div className="space-y-4 sm:space-y-5">
+              {/* Description */}
+              {selectedItem.description && (
+                <p className={`text-base sm:text-lg leading-relaxed ${
+                  theme === "dark" ? "text-white/90" : "text-slate-700"
+                }`}>
+                  {selectedItem.description}
+                </p>
+              )}
               
-              <div className="flex items-center gap-2">
-                <span className={`text-4xl font-bold ${
+              {/* Price */}
+              <div className="flex items-center gap-2 pb-2">
+                <span className={`text-3xl sm:text-4xl font-bold ${
                   theme === "dark" ? "text-amber-300" : "text-amber-600"
-                }`}>{formatPrice(selectedItem.price)}</span>
+                }`}>
+                  {formatPrice(selectedItem.price)}
+                </span>
               </div>
 
               {/* Size Selection */}
               {getSizeOptions(selectedItem.price).length > 0 && (
                 <div>
-                  <label className={`block text-sm font-semibold mb-3 ${
+                  <label className={`block text-sm sm:text-base font-semibold mb-3 ${
                     theme === "dark" ? "text-white" : "text-slate-900"
                   }`}>
                     Taille
                   </label>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 sm:gap-3">
                     {getSizeOptions(selectedItem.price).map((size) => (
                       <button
                         key={size}
                         onClick={() => setSelectedSize(size)}
-                        className={`flex-1 px-6 py-4 rounded-lg border-2 transition-all ${
+                        className={cn(
+                          "flex-1 px-4 sm:px-6 py-3 sm:py-4 rounded-xl border-2 transition-all",
+                          "min-h-[48px] touch-manipulation",
+                          "active:scale-95",
                           selectedSize === size
                             ? theme === "dark"
-                              ? "border-green-500 bg-green-500/20 text-green-400"
-                              : "border-green-600 bg-green-50 text-green-700"
+                              ? "border-green-500 bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20"
+                              : "border-green-600 bg-green-50 text-green-700 shadow-lg shadow-green-600/20"
                             : theme === "dark"
-                              ? "border-white/20 bg-white/5 text-white/70 hover:border-white/40"
-                              : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
-                        } font-semibold`}
+                              ? "border-white/20 bg-white/5 text-white/70 hover:border-white/40 active:bg-white/10"
+                              : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 active:bg-slate-50",
+                          "font-semibold text-sm sm:text-base"
+                        )}
                       >
                         {size}
                       </button>
@@ -488,40 +618,47 @@ export default function MenuPage() {
 
               {/* Quantity Selection */}
               <div>
-                <label className={`block text-sm font-semibold mb-3 ${
+                <label className={`block text-sm sm:text-base font-semibold mb-3 ${
                   theme === "dark" ? "text-white" : "text-slate-900"
                 }`}>
                   Quantité
                 </label>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 sm:gap-6">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center transition-all ${
+                    className={cn(
+                      "w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 flex items-center justify-center transition-all",
+                      "touch-manipulation active:scale-90",
                       theme === "dark"
-                        ? "border-white/20 bg-white/5 text-white hover:bg-white/10"
-                        : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
-                    }`}
+                        ? "border-white/20 bg-white/5 text-white hover:bg-white/10 active:bg-white/20"
+                        : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50 active:bg-slate-100"
+                    )}
+                    aria-label="Diminuer la quantité"
                   >
-                    <Minus className="h-5 w-5" />
+                    <Minus className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
-                  <span className={`text-3xl font-bold min-w-[60px] text-center ${
+                  <span className={`text-2xl sm:text-3xl font-bold min-w-[60px] sm:min-w-[80px] text-center ${
                     theme === "dark" ? "text-white" : "text-slate-900"
                   }`}>
                     {quantity}
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center transition-all ${
+                    className={cn(
+                      "w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 flex items-center justify-center transition-all",
+                      "touch-manipulation active:scale-90",
                       theme === "dark"
-                        ? "border-white/20 bg-white/5 text-white hover:bg-white/10"
-                        : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
-                    }`}
+                        ? "border-white/20 bg-white/5 text-white hover:bg-white/10 active:bg-white/20"
+                        : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50 active:bg-slate-100"
+                    )}
+                    aria-label="Augmenter la quantité"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
                 </div>
               </div>
 
+              {/* Add to Cart Button */}
               <button
                 onClick={() => {
                   if (getSizeOptions(selectedItem.price).length > 0 && !selectedSize) {
@@ -533,9 +670,17 @@ export default function MenuPage() {
                   setQuantity(1);
                   setSelectedSize("");
                 }}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white px-6 py-4 text-base font-semibold transition-all hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500"
+                className={cn(
+                  "w-full inline-flex items-center justify-center gap-2 rounded-full",
+                  "bg-green-600 hover:bg-green-700 text-white",
+                  "px-6 py-4 sm:py-5 text-base sm:text-lg font-semibold",
+                  "transition-all hover:scale-[1.02] active:scale-95",
+                  "touch-manipulation min-h-[56px]",
+                  "shadow-lg shadow-green-600/30 hover:shadow-xl hover:shadow-green-600/40",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500"
+                )}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
                 <span>Ajouter au panier {quantity > 1 && `(${quantity})`}</span>
               </button>
             </div>

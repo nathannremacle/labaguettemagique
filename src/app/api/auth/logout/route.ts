@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromCookie, logout } from "@/lib/auth";
+import { getSessionFromCookie, deleteSession } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
     // Delete session if it exists
     if (sessionId) {
-      logout(sessionId);
+      deleteSession(sessionId);
     }
 
     // Clear the session cookie
@@ -24,4 +24,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

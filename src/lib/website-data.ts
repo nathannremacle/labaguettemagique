@@ -38,17 +38,6 @@ export function getWhatsAppOrderUrl(itemName: string): string {
   return getWhatsAppUrl(message);
 }
 
-export const menuCategories = [
-  "Sandwiches Classique",
-  "Sandwiches spéciaux",
-  "Sandwiches chauds",
-  "Pitas",
-  "Salade",
-  "Assiettes préparées",
-  "Plats préparés sur commande",
-  "Frites & Snacks",
-];
-
 // Opening hours from https://labaguettemagiquesarttilman.be/
 export const openingHours = [
   { days: "Lundi", hours: "11h00 - 22h00" },

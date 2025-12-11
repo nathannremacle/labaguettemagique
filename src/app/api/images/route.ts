@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     images.sort();
 
     return NextResponse.json({ images });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error listing images:", error);
     return NextResponse.json({ images: [] }, { status: 500 });
   }

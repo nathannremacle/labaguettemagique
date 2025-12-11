@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      const itemIds = ids.map((id: any) => parseInt(String(id))).filter((id: number) => !isNaN(id));
+      const itemIds = ids.map((id: unknown) => parseInt(String(id))).filter((id: number) => !isNaN(id));
       if (itemIds.length !== ids.length) {
         return NextResponse.json(
           { error: "Invalid item IDs" },
@@ -49,10 +49,11 @@ export async function POST(request: NextRequest) {
       { error: "Invalid reorder type. Use 'categories' or 'items'" },
       { status: 400 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error reordering:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to reorder", details: error.message || String(error) },
+      { error: "Failed to reorder", details: errorMessage },
       { status: 500 }
     );
   }

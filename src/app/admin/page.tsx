@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MenuSection, MenuCategory, MenuItem } from "@/components/MenuSection";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { useTheme } from "@/components/ThemeProvider";
 import { EditableMenuItem } from "@/components/admin/EditableMenuItem";
-import { LogOut, Plus, ToggleLeft, ToggleRight, Edit, Save, X, Sun, Moon, GripVertical, Trash2, Eye, Search, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { LogOut, Plus, ToggleLeft, ToggleRight, Edit, Save, X, Sun, Moon, GripVertical, Trash2, Eye, Search, ChevronDown, ChevronUp, ExternalLink, KeyRound, User } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -37,6 +38,7 @@ function SortableCategory({
   handleStartEditCategory,
   handleSaveItem,
   handleDeleteItem,
+  handleDeleteCategory,
   isExpanded,
   onToggleExpand,
   formatPrice,
@@ -50,7 +52,8 @@ function SortableCategory({
   handleCancelEditCategory: () => void;
   handleStartEditCategory: (category: MenuCategory) => void;
   handleSaveItem: (categoryId: string, itemId: number, item: MenuItem) => void;
-  handleDeleteItem: (categoryId: string, itemId: number) => void;
+  handleDeleteItem: (categoryId: string, itemId: number, itemName?: string) => void;
+  handleDeleteCategory: (categoryId: string) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
   formatPrice: (price: string | undefined) => string;
@@ -152,6 +155,14 @@ function SortableCategory({
                 <Edit className="h-4 w-4 mr-2" />
                 Modifier
               </Button>
+              <Button
+                onClick={() => handleDeleteCategory(category.id)}
+                variant="outline"
+                className="text-red-500 hover:text-red-700 text-sm"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </Button>
             </>
           )}
         </div>
@@ -234,8 +245,8 @@ function SortableCategory({
                               </Button>
                               <Button
                                 onClick={() => {
-                                  if (item.id !== undefined && confirm(`Êtes-vous sûr de vouloir supprimer "${item.name || 'cet article'}" ?`)) {
-                                    handleDeleteItem(category.id, item.id);
+                                  if (item.id !== undefined) {
+                                    handleDeleteItem(category.id, item.id, item.name);
                                   }
                                 }}
                                 variant="outline"
@@ -349,6 +360,7 @@ function SortableItem({
 export default function AdminDashboard() {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [username, setUsername] = useState<string>("");
   const [menuData, setMenuData] = useState<MenuCategory[]>([]);
   const [newItem, setNewItem] = useState<Partial<MenuItem>>({});
   const [newItemCategoryId, setNewItemCategoryId] = useState<string>("");
@@ -364,6 +376,12 @@ export default function AdminDashboard() {
   const [footerItems, setFooterItems] = useState<Array<{id: number; title: string; description?: string; icon?: string; link?: string; menu_item_name?: string; menu_category_id?: string; visible: boolean}>>([]);
   const [newFooterItem, setNewFooterItem] = useState({ title: "", description: "", icon: "", link: "", menu_item_name: "", menu_category_id: "", visible: true });
   const [editingFooterItem, setEditingFooterItem] = useState<number | null>(null);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
 
@@ -433,6 +451,7 @@ export default function AdminDashboard() {
       
       if (data.authenticated) {
         setAuthenticated(true);
+        setUsername(data.username || "admin");
         loadMenuData();
         loadStatus();
         loadFooterItems();
@@ -469,7 +488,7 @@ export default function AdminDashboard() {
           // Ensure all categories have items array and items have IDs
           const normalizedData = data.map((cat: MenuCategory) => ({
             ...cat,
-            items: (cat.items || []).map((item: any) => ({
+            items: (cat.items || []).map((item: MenuItem) => ({
               ...item,
               id: item.id, // Ensure ID is preserved
             })),
@@ -550,8 +569,65 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { 
+      method: "POST",
+      credentials: "include"
+    });
     router.push("/admin/login");
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError("");
+    
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("All fields are required");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 3) {
+      setPasswordError("New password must be at least 3 characters long");
+      return;
+    }
+
+    // Confirmation prompt
+    if (!confirm("Are you sure you want to change your password? You will need to use the new password for future logins.")) {
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Success - close dialog and reset form
+        setShowChangePasswordDialog(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setPasswordError("");
+        alert("Password changed successfully!");
+      } else {
+        setPasswordError(data.error || "Failed to change password");
+      }
+    } catch (error) {
+      setPasswordError("An error occurred. Please try again.");
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const handleSaveItem = async (
@@ -585,8 +661,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteItem = async (categoryId: string, itemId: number) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cet article ?")) return;
+  const handleDeleteItem = async (categoryId: string, itemId: number, itemName?: string) => {
+    const itemNameText = itemName || "cet article";
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer "${itemNameText}" ?`)) return;
 
     try {
       const response = await fetch(
@@ -762,9 +839,10 @@ export default function AdminDashboard() {
         console.error("Failed to update category:", response.status, errorData);
         alert(`Erreur lors de la mise à jour: ${errorData.error || "Erreur inconnue"}`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to update category:", error);
-      alert(`Erreur lors de la mise à jour: ${error.message || "Erreur de connexion"}`);
+      const errorMessage = error instanceof Error ? error.message : "Erreur de connexion";
+      alert(`Erreur lors de la mise à jour: ${errorMessage}`);
     }
   };
 
@@ -800,6 +878,41 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteCategory = async (categoryId: string) => {
+    const category = menuData.find(cat => cat.id === categoryId);
+    const itemCount = category?.items?.length || 0;
+    
+    const warningMessage = itemCount > 0
+      ? `Êtes-vous sûr de vouloir supprimer la catégorie "${category?.label}" ?\n\nCette catégorie contient ${itemCount} article${itemCount > 1 ? 's' : ''}. La suppression de la catégorie supprimera également tous ses articles.`
+      : `Êtes-vous sûr de vouloir supprimer la catégorie "${category?.label}" ?`;
+    
+    if (!confirm(warningMessage)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/menu/categories/${categoryId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        await loadMenuData();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        console.error("Failed to delete category:", response.status, errorData);
+        alert(`Erreur lors de la suppression: ${errorData.error || "Erreur inconnue"}`);
+      }
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erreur de connexion";
+      alert(`Erreur lors de la suppression: ${errorMessage}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${
@@ -832,6 +945,22 @@ export default function AdminDashboard() {
             Panneau d'administration
           </h1>
           <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
+              theme === "dark"
+                ? "bg-white/5 text-white/70"
+                : "bg-slate-100 text-slate-600"
+            }`}>
+              <User className="h-4 w-4" />
+              <span className="text-sm font-medium">{username}</span>
+            </div>
+            <Button
+              onClick={() => setShowChangePasswordDialog(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <KeyRound className="h-4 w-4" />
+              Changer le mot de passe
+            </Button>
             <a
               href="/"
               target="_blank"
@@ -1712,8 +1841,8 @@ export default function AdminDashboard() {
                                 </Button>
                                 <Button
                                   onClick={() => {
-                                    if (item.id !== undefined && confirm(`Êtes-vous sûr de vouloir supprimer "${item.name}" ?`)) {
-                                      handleDeleteItem(item.categoryId, item.id);
+                                    if (item.id !== undefined) {
+                                      handleDeleteItem(item.categoryId, item.id, item.name);
                                     }
                                   }}
                                   variant="outline"
@@ -1757,6 +1886,7 @@ export default function AdminDashboard() {
                   handleStartEditCategory={handleStartEditCategory}
                   handleSaveItem={handleSaveItem}
                   handleDeleteItem={handleDeleteItem}
+                  handleDeleteCategory={handleDeleteCategory}
                   isExpanded={expandedCategories.has(category.id)}
                   onToggleExpand={() => {
                     setExpandedCategories(prev => {
@@ -1788,6 +1918,120 @@ export default function AdminDashboard() {
           </SortableContext>
         </DndContext>
       </main>
+
+      {/* Change Password Dialog */}
+      <Dialog
+        isOpen={showChangePasswordDialog}
+        onClose={() => {
+          setShowChangePasswordDialog(false);
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+          setPasswordError("");
+        }}
+        title="Changer le mot de passe"
+      >
+        <div className="space-y-4">
+          {passwordError && (
+            <div className={`p-3 rounded-lg border ${
+              theme === "dark"
+                ? "bg-red-500/10 border-red-500/20 text-red-400"
+                : "bg-red-50 border-red-200 text-red-600"
+            }`}>
+              {passwordError}
+            </div>
+          )}
+
+          <div>
+            <label
+              className={`block text-sm font-medium mb-2 ${
+                theme === "dark" ? "text-white" : "text-slate-700"
+              }`}
+            >
+              Mot de passe actuel
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className={`w-full px-4 py-2 rounded-lg border ${
+                theme === "dark"
+                  ? "border-white/10 bg-white/5 text-white placeholder-white/50"
+                  : "border-slate-300 bg-white text-slate-900"
+              } focus:outline-none focus:ring-2 focus:ring-green-500`}
+              placeholder="Entrez votre mot de passe actuel"
+              disabled={changingPassword}
+            />
+          </div>
+
+          <div>
+            <label
+              className={`block text-sm font-medium mb-2 ${
+                theme === "dark" ? "text-white" : "text-slate-700"
+              }`}
+            >
+              Nouveau mot de passe
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className={`w-full px-4 py-2 rounded-lg border ${
+                theme === "dark"
+                  ? "border-white/10 bg-white/5 text-white placeholder-white/50"
+                  : "border-slate-300 bg-white text-slate-900"
+              } focus:outline-none focus:ring-2 focus:ring-green-500`}
+              placeholder="Entrez votre nouveau mot de passe (min. 3 caractères)"
+              disabled={changingPassword}
+            />
+          </div>
+
+          <div>
+            <label
+              className={`block text-sm font-medium mb-2 ${
+                theme === "dark" ? "text-white" : "text-slate-700"
+              }`}
+            >
+              Confirmer le nouveau mot de passe
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className={`w-full px-4 py-2 rounded-lg border ${
+                theme === "dark"
+                  ? "border-white/10 bg-white/5 text-white placeholder-white/50"
+                  : "border-slate-300 bg-white text-slate-900"
+              } focus:outline-none focus:ring-2 focus:ring-green-500`}
+              placeholder="Confirmez votre nouveau mot de passe"
+              disabled={changingPassword}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              onClick={handleChangePassword}
+              disabled={changingPassword}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {changingPassword ? "Changement en cours..." : "Changer le mot de passe"}
+            </Button>
+            <Button
+              onClick={() => {
+                setShowChangePasswordDialog(false);
+                setCurrentPassword("");
+                setNewPassword("");
+                setConfirmPassword("");
+                setPasswordError("");
+              }}
+              variant="outline"
+              disabled={changingPassword}
+            >
+              Annuler
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

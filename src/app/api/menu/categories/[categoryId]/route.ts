@@ -36,10 +36,11 @@ export async function GET(
         highlight: Boolean(item.highlight),
       })),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error reading category:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to read category", details: error.message || String(error) },
+      { error: "Failed to read category", details: errorMessage },
       { status: 500 }
     );
   }
@@ -74,7 +75,15 @@ export async function PUT(
       );
     }
     
-    const category = updateCategory(categoryId, { label: updates.label.trim() });
+    const label = updates.label.trim();
+    if (label.length > 100) {
+      return NextResponse.json(
+        { error: "Category label is too long (max 100 characters)" },
+        { status: 400 }
+      );
+    }
+    
+    const category = updateCategory(categoryId, { label });
     
     if (!category) {
       return NextResponse.json(
@@ -90,10 +99,11 @@ export async function PUT(
         label: category.label,
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating category:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to update category", details: error.message || String(error) },
+      { error: "Failed to update category", details: errorMessage },
       { status: 500 }
     );
   }
@@ -121,10 +131,11 @@ export async function DELETE(
     }
     
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error deleting category:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to delete category", details: error.message || String(error) },
+      { error: "Failed to delete category", details: errorMessage },
       { status: 500 }
     );
   }

@@ -61,7 +61,12 @@ export async function POST(request: NextRequest) {
     const image = sharp(buffer);
     const metadata = await image.metadata();
     
-    // Generate unique filename base
+    // Sanitize original filename to prevent path traversal
+    const sanitizedOriginalName = file.name
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .substring(0, 100); // Limit length
+    
+    // Generate unique filename base (prevents collisions and path traversal)
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const baseFilename = `${timestamp}-${randomString}`;
@@ -69,6 +74,16 @@ export async function POST(request: NextRequest) {
     // Optimized image (max 1200px width, WebP format)
     const optimizedFilename = `${baseFilename}.webp`;
     const optimizedPath = path.join(UPLOAD_DIR, optimizedFilename);
+    
+    // Validate path to prevent directory traversal attacks
+    const resolvedPath = path.resolve(optimizedPath);
+    const resolvedUploadDir = path.resolve(UPLOAD_DIR);
+    if (!resolvedPath.startsWith(resolvedUploadDir)) {
+      return NextResponse.json(
+        { error: "Invalid file path" },
+        { status: 400 }
+      );
+    }
     
     const optimizedBuffer = await image
       .resize(1200, null, {
@@ -105,7 +120,7 @@ export async function POST(request: NextRequest) {
     `);
     stmt.run(
       optimizedFilename,
-      file.name,
+      sanitizedOriginalName,
       `/images/menu-items/${optimizedFilename}`,
       optimizedMetadata.width || metadata.width || 0,
       optimizedMetadata.height || metadata.height || 0,
@@ -124,10 +139,11 @@ export async function POST(request: NextRequest) {
       height: optimizedMetadata.height,
       size: optimizedBuffer.length,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error uploading file:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to upload file", details: error.message || String(error) },
+      { error: "Failed to upload file", details: errorMessage },
       { status: 500 }
     );
   }

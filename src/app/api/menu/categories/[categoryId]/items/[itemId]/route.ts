@@ -48,10 +48,11 @@ export async function GET(
       image: item.image || undefined,
       highlight: Boolean(item.highlight),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error reading item:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to read item", details: error.message || String(error) },
+      { error: "Failed to read item", details: errorMessage },
       { status: 500 }
     );
   }
@@ -97,13 +98,99 @@ export async function PUT(
       );
     }
     
-    const item = updateItem(itemIdNum, {
-      name: updates.name,
-      description: updates.description,
-      price: updates.price,
-      image: updates.image,
-      highlight: updates.highlight,
-    });
+    // Validate and sanitize update fields
+    const updateData: {
+      name?: string;
+      description?: string;
+      price?: string;
+      image?: string;
+      highlight?: boolean;
+    } = {};
+    
+    if (updates.name !== undefined) {
+      if (typeof updates.name !== "string") {
+        return NextResponse.json(
+          { error: "Invalid name format" },
+          { status: 400 }
+        );
+      }
+      const name = updates.name.trim();
+      if (name.length === 0 || name.length > 200) {
+        return NextResponse.json(
+          { error: "Item name must be between 1 and 200 characters" },
+          { status: 400 }
+        );
+      }
+      updateData.name = name;
+    }
+    
+    if (updates.description !== undefined) {
+      if (typeof updates.description !== "string") {
+        return NextResponse.json(
+          { error: "Invalid description format" },
+          { status: 400 }
+        );
+      }
+      const description = updates.description.trim();
+      if (description.length === 0 || description.length > 1000) {
+        return NextResponse.json(
+          { error: "Item description must be between 1 and 1000 characters" },
+          { status: 400 }
+        );
+      }
+      updateData.description = description;
+    }
+    
+    if (updates.price !== undefined) {
+      if (typeof updates.price !== "string") {
+        return NextResponse.json(
+          { error: "Invalid price format" },
+          { status: 400 }
+        );
+      }
+      const price = updates.price.trim();
+      if (price.length === 0 || price.length > 50) {
+        return NextResponse.json(
+          { error: "Price must be between 1 and 50 characters" },
+          { status: 400 }
+        );
+      }
+      updateData.price = price;
+    }
+    
+    if (updates.image !== undefined) {
+      if (updates.image === null) {
+        updateData.image = undefined;
+      } else {
+        if (typeof updates.image !== "string") {
+          return NextResponse.json(
+            { error: "Invalid image path format" },
+            { status: 400 }
+          );
+        }
+        const image = updates.image.trim();
+        if (image.length > 500) {
+          return NextResponse.json(
+            { error: "Image path is too long" },
+            { status: 400 }
+          );
+        }
+        // Ensure image path is safe (starts with /images/)
+        if (!image.startsWith("/images/") || image.includes("..")) {
+          return NextResponse.json(
+            { error: "Invalid image path" },
+            { status: 400 }
+          );
+        }
+        updateData.image = image;
+      }
+    }
+    
+    if (updates.highlight !== undefined) {
+      updateData.highlight = Boolean(updates.highlight);
+    }
+    
+    const item = updateItem(itemIdNum, updateData);
     
     if (!item) {
       return NextResponse.json(
@@ -123,10 +210,11 @@ export async function PUT(
         highlight: Boolean(item.highlight),
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating item:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to update item", details: error.message || String(error) },
+      { error: "Failed to update item", details: errorMessage },
       { status: 500 }
     );
   }
@@ -181,10 +269,11 @@ export async function DELETE(
     }
     
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error deleting item:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to delete item", details: error.message || String(error) },
+      { error: "Failed to delete item", details: errorMessage },
       { status: 500 }
     );
   }

@@ -12,7 +12,7 @@ interface EditableMenuItemProps {
   categoryId: string;
   itemId: number;
   onSave: (categoryId: string, itemId: number, item: MenuItem) => void;
-  onDelete: (categoryId: string, itemId: number) => void;
+  onDelete: (categoryId: string, itemId: number, itemName?: string) => void;
 }
 
 export function EditableMenuItem({
@@ -318,9 +318,7 @@ export function EditableMenuItem({
           </Button>
           <Button
             onClick={() => {
-              if (confirm("Are you sure you want to delete this item?")) {
-                onDelete(categoryId, itemId);
-              }
+              onDelete(categoryId, itemId, item.name);
             }}
             variant="outline"
             className="text-red-500 hover:text-red-700 text-sm px-3 py-2"

@@ -27,10 +27,11 @@ export async function GET(request: NextRequest) {
     }));
     
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error reading categories:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to read categories", details: error.message || String(error) },
+      { error: "Failed to read categories", details: errorMessage },
       { status: 500 }
     );
   }
@@ -62,11 +63,20 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Generate ID from label
+    // Validate label length (prevent DoS)
+    if (label.length > 100) {
+      return NextResponse.json(
+        { error: "Category label is too long (max 100 characters)" },
+        { status: 400 }
+      );
+    }
+    
+    // Generate ID from label (sanitized)
     const id = label
       .toLowerCase()
       .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
+      .replace(/[^a-z0-9-]/g, "")
+      .substring(0, 100); // Limit length
     
     // Check if category with same ID already exists
     const existingCategories = getAllCategories();
@@ -88,10 +98,11 @@ export async function POST(request: NextRequest) {
         items: [],
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating category:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to create category", details: error.message || String(error) },
+      { error: "Failed to create category", details: errorMessage },
       { status: 500 }
     );
   }

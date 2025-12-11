@@ -59,7 +59,7 @@ export function createCategory(data: { id: string; label: string }): Category {
 export function updateCategory(id: string, data: { label?: string }): Category | null {
   const db = getDatabase();
   const updates: string[] = [];
-  const values: any[] = [];
+  const values: (string | number)[] = [];
   
   if (data.label !== undefined) {
     updates.push("label = ?");
@@ -164,7 +164,7 @@ export function updateItem(id: number, data: {
 }): MenuItem | null {
   const db = getDatabase();
   const updates: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | null)[] = [];
   
   if (data.name !== undefined) {
     updates.push("name = ?");
@@ -235,5 +235,16 @@ export function getAllCategoriesWithItems(): CategoryWithItems[] {
     ...category,
     items: getItemsByCategory(category.id),
   }));
+}
+
+// Validate menu item exists
+export function validateMenuItem(categoryId: string, itemName: string): boolean {
+  const db = getDatabase();
+  const stmt = db.prepare(`
+    SELECT COUNT(*) as count FROM menu_items
+    WHERE category_id = ? AND LOWER(name) = LOWER(?)
+  `);
+  const result = stmt.get(categoryId, itemName) as { count: number };
+  return result.count > 0;
 }
 

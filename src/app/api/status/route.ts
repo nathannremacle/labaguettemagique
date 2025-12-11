@@ -1,17 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/middleware";
 import { getStatus, setStatus } from "@/lib/status";
+import { createErrorResponse, createSuccessResponse } from "@/lib/api-utils";
 
 // GET - Get current status
 export async function GET() {
   try {
     const status = getStatus();
-    return NextResponse.json(status);
+    return createSuccessResponse(status);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to get status" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, "Failed to get status", 500);
   }
 }
 
@@ -19,18 +17,15 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return createErrorResponse(null, "Unauthorized", 401);
   }
 
   try {
     const status = await request.json();
     setStatus(status);
-    return NextResponse.json({ success: true, status });
+    return createSuccessResponse({ success: true, status });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to update status" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, "Failed to update status", 500);
   }
 }
 

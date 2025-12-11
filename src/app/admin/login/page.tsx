@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -25,7 +23,7 @@ export default function AdminLogin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ username, password, rememberMe }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
@@ -34,15 +32,7 @@ export default function AdminLogin() {
         router.push("/admin");
         router.refresh();
       } else {
-        if (response.status === 429) {
-          const retryAfter = data.retryAfter || 1800;
-          const minutes = Math.ceil(retryAfter / 60);
-          setError(
-            `Too many login attempts. Please try again in ${minutes} minute${minutes > 1 ? "s" : ""}.`
-          );
-        } else {
-          setError(data.error || "Invalid credentials");
-        }
+        setError(data.error || "Invalid credentials");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -130,31 +120,6 @@ export default function AdminLogin() {
               placeholder="Enter password"
               disabled={loading}
             />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <label
-              className={`flex items-center gap-2 text-sm ${
-                theme === "dark" ? "text-white/90" : "text-slate-700"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="rounded"
-                disabled={loading}
-              />
-              Remember me
-            </label>
-            <Link
-              href="/admin/reset-request"
-              className={`text-sm hover:underline ${
-                theme === "dark" ? "text-green-400" : "text-green-600"
-              }`}
-            >
-              Forgot password?
-            </Link>
           </div>
 
           <Button

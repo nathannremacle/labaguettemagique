@@ -6,6 +6,10 @@ export interface AuthenticatedUser {
   sessionId: string;
 }
 
+/**
+ * Check if the request is authenticated
+ * Returns the authenticated user or null
+ */
 export function requireAuth(request: NextRequest): AuthenticatedUser | null {
   const cookieHeader = request.headers.get("cookie");
   const sessionId = getSessionFromCookie(cookieHeader);
@@ -26,6 +30,9 @@ export function requireAuth(request: NextRequest): AuthenticatedUser | null {
   };
 }
 
+/**
+ * Middleware wrapper for protected API routes
+ */
 export function authMiddleware(
   handler: (
     req: NextRequest,

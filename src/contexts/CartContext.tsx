@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useMemo, useCallback, ReactNode } from "react";
 import { MenuItem } from "@/components/MenuSection";
 
 export type CartItem = MenuItem & {
@@ -24,7 +24,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addItem = (item: MenuItem, categoryId: string) => {
+  const addItem = useCallback((item: MenuItem, categoryId: string) => {
     setItems((prev) => {
       const existing = prev.find(
         (i) => i.name === item.name && i.categoryId === categoryId
@@ -38,15 +38,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, { ...item, quantity: 1, categoryId }];
     });
-  };
+  }, []);
 
-  const removeItem = (itemName: string, categoryId: string) => {
+  const removeItem = useCallback((itemName: string, categoryId: string) => {
     setItems((prev) =>
       prev.filter((i) => !(i.name === itemName && i.categoryId === categoryId))
     );
-  };
+  }, []);
 
-  const updateQuantity = (itemName: string, categoryId: string, quantity: number) => {
+  const updateQuantity = useCallback((itemName: string, categoryId: string, quantity: number) => {
     if (quantity <= 0) {
       removeItem(itemName, categoryId);
       return;
@@ -58,17 +58,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
           : i
       )
     );
-  };
+  }, [removeItem]);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setItems([]);
-  };
+  }, []);
 
-  const getTotalItems = () => {
+  const getTotalItems = useCallback(() => {
     return items.reduce((sum, item) => sum + item.quantity, 0);
-  };
+  }, [items]);
 
-  const getTotalPrice = () => {
+  const getTotalPrice = useCallback(() => {
     // Extract numeric price from price string (e.g., "5,50 €" -> 5.50)
     const extractPrice = (priceStr: string): number => {
       // Handle ranges like "5,50 € - 6,50 €" by taking the first price
@@ -82,9 +82,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }, 0);
 
     return total.toFixed(2).replace(".", ",") + " €";
-  };
+  }, [items]);
 
-  const formatWhatsAppMessage = () => {
+  const formatWhatsAppMessage = useCallback(() => {
     if (items.length === 0) return "";
 
     let message = "Bonjour, je souhaite passer une commande :\n\n";
@@ -101,21 +101,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     message += "\n\nMerci !";
 
     return message;
-  };
+  }, [items, getTotalPrice]);
+
+  const contextValue = useMemo(
+    () => ({
+      items,
+      addItem,
+      removeItem,
+      updateQuantity,
+      clearCart,
+      getTotalPrice,
+      getTotalItems,
+      formatWhatsAppMessage,
+    }),
+    [items, addItem, removeItem, updateQuantity, clearCart, getTotalPrice, getTotalItems, formatWhatsAppMessage]
+  );
 
   return (
-    <CartContext.Provider
-      value={{
-        items,
-        addItem,
-        removeItem,
-        updateQuantity,
-        clearCart,
-        getTotalPrice,
-        getTotalItems,
-        formatWhatsAppMessage,
-      }}
-    >
+    <CartContext.Provider value={contextValue}>
       {children}
     </CartContext.Provider>
   );

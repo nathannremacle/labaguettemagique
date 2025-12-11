@@ -72,11 +72,47 @@ function initializeSchema(database: Database.Database) {
     )
   `);
 
+  // Footer items table
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS footer_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      icon TEXT,
+      link TEXT,
+      menu_item_name TEXT,
+      menu_category_id TEXT,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      visible INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  // Add new columns if they don't exist (migration)
+  try {
+    database.exec(`
+      ALTER TABLE footer_items ADD COLUMN menu_item_name TEXT;
+    `);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  
+  try {
+    database.exec(`
+      ALTER TABLE footer_items ADD COLUMN menu_category_id TEXT;
+    `);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   // Create indexes
   database.exec(`
     CREATE INDEX IF NOT EXISTS idx_menu_items_category ON menu_items(category_id);
     CREATE INDEX IF NOT EXISTS idx_categories_order ON categories("order");
     CREATE INDEX IF NOT EXISTS idx_menu_items_order ON menu_items(category_id, "order");
+    CREATE INDEX IF NOT EXISTS idx_footer_items_order ON footer_items("order");
+    CREATE INDEX IF NOT EXISTS idx_footer_items_visible ON footer_items(visible);
   `);
 }
 

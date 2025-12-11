@@ -16,7 +16,7 @@ export function SuppressDevWarnings() {
     const originalError = console.error;
     const originalWarn = console.warn;
 
-    console.error = function (...args: any[]) {
+    console.error = function (...args: unknown[]) {
       const message = args[0]?.toString() || "";
       if (
         message.includes("params are being enumerated") ||
@@ -28,7 +28,7 @@ export function SuppressDevWarnings() {
       originalError.apply(console, args);
     };
 
-    console.warn = function (...args: any[]) {
+    console.warn = function (...args: unknown[]) {
       const message = args[0]?.toString() || "";
       if (
         message.includes("params are being enumerated") ||
@@ -48,4 +48,5 @@ export function SuppressDevWarnings() {
 
   return null;
 }
+
 
