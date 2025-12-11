@@ -361,6 +361,9 @@ export default function AdminDashboard() {
   const [showAllItems, setShowAllItems] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [footerItems, setFooterItems] = useState<Array<{id: number; title: string; description?: string; icon?: string; link?: string; menu_item_name?: string; menu_category_id?: string; visible: boolean}>>([]);
+  const [newFooterItem, setNewFooterItem] = useState({ title: "", description: "", icon: "", link: "", menu_item_name: "", menu_category_id: "", visible: true });
+  const [editingFooterItem, setEditingFooterItem] = useState<number | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
 
@@ -423,13 +426,16 @@ export default function AdminDashboard() {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch("/api/auth/verify");
+      const response = await fetch("/api/auth/verify", {
+        credentials: "include",
+      });
       const data = await response.json();
       
       if (data.authenticated) {
         setAuthenticated(true);
         loadMenuData();
         loadStatus();
+        loadFooterItems();
       } else {
         router.push("/admin/login");
       }
@@ -456,8 +462,7 @@ export default function AdminDashboard() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log("Loaded menu data:", data);
-        console.log("Number of categories:", data?.length || 0);
+        // Menu data loaded successfully
         
         // Check if data is an array and has content
         if (Array.isArray(data) && data.length > 0) {
@@ -471,39 +476,32 @@ export default function AdminDashboard() {
           }));
           setMenuData(normalizedData);
         } else {
-          console.warn("Menu data is empty or not an array, using default data");
-          // Import default menu data as fallback
-          const { menuData: defaultMenuData } = await import("@/components/MenuSection");
-          const normalizedData = defaultMenuData.map((cat: MenuCategory) => ({
-            ...cat,
-            items: cat.items || [],
-          }));
-          setMenuData(normalizedData);
+          // Menu data is empty - set empty array
+          setMenuData([]);
         }
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Failed to load menu:", response.status, errorData);
-        // Fallback to default data if API fails
-        const { menuData: defaultMenuData } = await import("@/components/MenuSection");
-        const normalizedData = defaultMenuData.map((cat: MenuCategory) => ({
-          ...cat,
-          items: cat.items || [],
-        }));
-        setMenuData(normalizedData);
+        // API returned error - keep empty state
+        setMenuData([]);
       }
     } catch (error) {
+      // Log error but don't expose details
       console.error("Failed to load menu:", error);
-      // Fallback to default data on error
-      try {
-        const { menuData: defaultMenuData } = await import("@/components/MenuSection");
-        const normalizedData = defaultMenuData.map((cat: MenuCategory) => ({
-          ...cat,
-          items: cat.items || [],
-        }));
-        setMenuData(normalizedData);
-      } catch (importError) {
-        console.error("Failed to load default menu data:", importError);
+      // Keep empty state on error
+      setMenuData([]);
+    }
+  };
+
+  const loadFooterItems = async () => {
+    try {
+      const response = await fetch("/api/footer", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFooterItems(data);
       }
+    } catch (error) {
+      console.error("Failed to load footer items:", error);
     }
   };
 
@@ -970,6 +968,371 @@ export default function AdminDashboard() {
                 }`}
               />
             )}
+          </div>
+        </div>
+
+        {/* Footer Items Management */}
+        <div className={`mb-8 p-6 rounded-lg border ${
+          theme === "dark"
+            ? "border-white/10 bg-slate-900"
+            : "border-slate-200 bg-slate-50"
+        }`}>
+          <h2 className={`text-xl font-semibold mb-4 ${
+            theme === "dark" ? "text-white" : "text-slate-900"
+          }`}>
+            Éléments du Footer
+          </h2>
+          <p className={`text-sm mb-4 ${
+            theme === "dark" ? "text-white/70" : "text-slate-600"
+          }`}>
+            Gérez les éléments affichés dans la section footer de la page d'accueil (au-dessus du bouton "Voir le menu complet").
+          </p>
+
+          {/* Existing Footer Items */}
+          <div className="space-y-3 mb-6">
+            {footerItems.map((item) => (
+              <div
+                key={item.id}
+                className={`p-4 rounded-lg border ${
+                  theme === "dark"
+                    ? "border-white/10 bg-white/5"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                {editingFooterItem === item.id ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={item.title}
+                      onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, title: e.target.value} : i))}
+                      placeholder="Titre"
+                      className={`w-full px-3 py-2 rounded border text-sm ${
+                        theme === "dark"
+                          ? "border-white/10 bg-white/5 text-white"
+                          : "border-slate-300 bg-white text-slate-900"
+                      }`}
+                    />
+                    <textarea
+                      value={item.description || ""}
+                      onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, description: e.target.value} : i))}
+                      placeholder="Description (optionnel)"
+                      rows={2}
+                      className={`w-full px-3 py-2 rounded border text-sm ${
+                        theme === "dark"
+                          ? "border-white/10 bg-white/5 text-white"
+                          : "border-slate-300 bg-white text-slate-900"
+                      }`}
+                    />
+                    <input
+                      type="text"
+                      value={item.icon || ""}
+                      onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, icon: e.target.value} : i))}
+                      placeholder="Icône (emoji, ex: 🍟)"
+                      className={`w-full px-3 py-2 rounded border text-sm ${
+                        theme === "dark"
+                          ? "border-white/10 bg-white/5 text-white"
+                          : "border-slate-300 bg-white text-slate-900"
+                      }`}
+                    />
+                    <input
+                      type="text"
+                      value={item.link || ""}
+                      onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, link: e.target.value} : i))}
+                      placeholder="Lien (optionnel, ex: /menu, https://..., tel:..., mailto:...)"
+                      className={`w-full px-3 py-2 rounded border text-sm ${
+                        theme === "dark"
+                          ? "border-white/10 bg-white/5 text-white"
+                          : "border-slate-300 bg-white text-slate-900"
+                      }`}
+                    />
+                    <div className="border-t pt-3 mt-3">
+                      <label className={`block text-sm font-semibold mb-2 ${
+                        theme === "dark" ? "text-white" : "text-slate-900"
+                      }`}>
+                        Lier à un élément du menu (optionnel)
+                      </label>
+                      <select
+                        value={item.menu_category_id || ""}
+                        onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, menu_category_id: e.target.value, menu_item_name: ""} : i))}
+                        className={`w-full px-3 py-2 rounded border text-sm mb-2 ${
+                          theme === "dark"
+                            ? "border-white/10 bg-white/5 text-white"
+                            : "border-slate-300 bg-white text-slate-900"
+                        }`}
+                      >
+                        <option value="">Sélectionner une catégorie</option>
+                        {menuData.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.label}
+                          </option>
+                        ))}
+                      </select>
+                      {item.menu_category_id && (
+                        <select
+                          value={item.menu_item_name || ""}
+                          onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, menu_item_name: e.target.value} : i))}
+                          className={`w-full px-3 py-2 rounded border text-sm ${
+                            theme === "dark"
+                              ? "border-white/10 bg-white/5 text-white"
+                              : "border-slate-300 bg-white text-slate-900"
+                          }`}
+                        >
+                          <option value="">Sélectionner un élément</option>
+                          {menuData.find(cat => cat.id === item.menu_category_id)?.items?.map((menuItem) => (
+                            <option key={menuItem.name} value={menuItem.name}>
+                              {menuItem.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className={`text-sm flex items-center gap-2 ${
+                        theme === "dark" ? "text-white/90" : "text-slate-700"
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={item.visible}
+                          onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, visible: e.target.checked} : i))}
+                          className="rounded"
+                        />
+                        Visible
+                      </label>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={async () => {
+                          const updated = footerItems.find(i => i.id === item.id);
+                          if (updated) {
+                            const response = await fetch(`/api/footer/${item.id}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              credentials: "include",
+                              body: JSON.stringify(updated),
+                            });
+                            if (response.ok) {
+                              setEditingFooterItem(null);
+                              await loadFooterItems();
+                            }
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-sm"
+                      >
+                        Enregistrer
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setEditingFooterItem(null);
+                          loadFooterItems();
+                        }}
+                        variant="outline"
+                        className="text-sm"
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {item.icon && <span className="text-2xl">{item.icon}</span>}
+                      <div>
+                        <p className={`font-semibold ${
+                          theme === "dark" ? "text-white" : "text-slate-900"
+                        }`}>
+                          {item.title}
+                        </p>
+                        {item.description && (
+                          <p className={`text-sm ${
+                            theme === "dark" ? "text-white/70" : "text-slate-600"
+                          }`}>
+                            {item.description}
+                          </p>
+                        )}
+                        {item.link && (
+                          <p className={`text-xs ${
+                            theme === "dark" ? "text-white/50" : "text-slate-500"
+                          }`}>
+                            Lien: {item.link}
+                          </p>
+                        )}
+                        <span className={`text-xs ${
+                          item.visible
+                            ? theme === "dark" ? "text-green-400" : "text-green-600"
+                            : theme === "dark" ? "text-red-400" : "text-red-600"
+                        }`}>
+                          {item.visible ? "Visible" : "Masqué"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setEditingFooterItem(item.id)}
+                        variant="outline"
+                        className="text-sm px-3 py-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          if (confirm(`Supprimer "${item.title}" ?`)) {
+                            const response = await fetch(`/api/footer/${item.id}`, {
+                              method: "DELETE",
+                              credentials: "include",
+                            });
+                            if (response.ok) {
+                              await loadFooterItems();
+                            }
+                          }
+                        }}
+                        variant="outline"
+                        className="text-red-500 hover:text-red-700 text-sm px-3 py-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add New Footer Item */}
+          <div className={`p-4 rounded-lg border ${
+            theme === "dark"
+              ? "border-white/10 bg-white/5"
+              : "border-slate-200 bg-slate-50"
+          }`}>
+            <h3 className={`text-lg font-semibold mb-3 ${
+              theme === "dark" ? "text-white" : "text-slate-900"
+            }`}>
+              Ajouter un élément
+            </h3>
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={newFooterItem.title}
+                onChange={(e) => setNewFooterItem({...newFooterItem, title: e.target.value})}
+                placeholder="Titre *"
+                className={`w-full px-3 py-2 rounded border text-sm ${
+                  theme === "dark"
+                    ? "border-white/10 bg-white/5 text-white"
+                    : "border-slate-300 bg-white text-slate-900"
+                }`}
+              />
+              <textarea
+                value={newFooterItem.description}
+                onChange={(e) => setNewFooterItem({...newFooterItem, description: e.target.value})}
+                placeholder="Description (optionnel)"
+                rows={2}
+                className={`w-full px-3 py-2 rounded border text-sm ${
+                  theme === "dark"
+                    ? "border-white/10 bg-white/5 text-white"
+                    : "border-slate-300 bg-white text-slate-900"
+                }`}
+              />
+              <input
+                type="text"
+                value={newFooterItem.icon}
+                onChange={(e) => setNewFooterItem({...newFooterItem, icon: e.target.value})}
+                placeholder="Icône (emoji, ex: 🍟, 📞, 📍)"
+                className={`w-full px-3 py-2 rounded border text-sm ${
+                  theme === "dark"
+                    ? "border-white/10 bg-white/5 text-white"
+                    : "border-slate-300 bg-white text-slate-900"
+                }`}
+              />
+              <input
+                type="text"
+                value={newFooterItem.link}
+                onChange={(e) => setNewFooterItem({...newFooterItem, link: e.target.value})}
+                placeholder="Lien (optionnel, ex: /menu, https://..., tel:+32..., mailto:...)"
+                className={`w-full px-3 py-2 rounded border text-sm ${
+                  theme === "dark"
+                    ? "border-white/10 bg-white/5 text-white"
+                    : "border-slate-300 bg-white text-slate-900"
+                }`}
+              />
+              <div className="border-t pt-3 mt-3">
+                <label className={`block text-sm font-semibold mb-2 ${
+                  theme === "dark" ? "text-white" : "text-slate-900"
+                }`}>
+                  Lier à un élément du menu (optionnel)
+                </label>
+                <select
+                  value={newFooterItem.menu_category_id || ""}
+                  onChange={(e) => setNewFooterItem({...newFooterItem, menu_category_id: e.target.value, menu_item_name: ""})}
+                  className={`w-full px-3 py-2 rounded border text-sm mb-2 ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5 text-white"
+                      : "border-slate-300 bg-white text-slate-900"
+                  }`}
+                >
+                  <option value="">Sélectionner une catégorie</option>
+                  {menuData.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+                {newFooterItem.menu_category_id && (
+                  <select
+                    value={newFooterItem.menu_item_name || ""}
+                    onChange={(e) => setNewFooterItem({...newFooterItem, menu_item_name: e.target.value})}
+                    className={`w-full px-3 py-2 rounded border text-sm ${
+                      theme === "dark"
+                        ? "border-white/10 bg-white/5 text-white"
+                        : "border-slate-300 bg-white text-slate-900"
+                    }`}
+                  >
+                    <option value="">Sélectionner un élément</option>
+                    {menuData.find(cat => cat.id === newFooterItem.menu_category_id)?.items?.map((menuItem) => (
+                      <option key={menuItem.name} value={menuItem.name}>
+                        {menuItem.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className={`text-sm flex items-center gap-2 ${
+                  theme === "dark" ? "text-white/90" : "text-slate-700"
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={newFooterItem.visible}
+                    onChange={(e) => setNewFooterItem({...newFooterItem, visible: e.target.checked})}
+                    className="rounded"
+                  />
+                  Visible
+                </label>
+              </div>
+              <Button
+                onClick={async () => {
+                  if (!newFooterItem.title.trim()) {
+                    alert("Le titre est requis");
+                    return;
+                  }
+                  const response = await fetch("/api/footer", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(newFooterItem),
+                  });
+                  if (response.ok) {
+                    setNewFooterItem({ title: "", description: "", icon: "", link: "", menu_item_name: "", menu_category_id: "", visible: true });
+                    await loadFooterItems();
+                  } else {
+                    const error = await response.json().catch(() => ({}));
+                    alert(error.error || "Erreur lors de l'ajout");
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter
+              </Button>
+            </div>
           </div>
         </div>
 

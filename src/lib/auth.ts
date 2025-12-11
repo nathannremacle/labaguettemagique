@@ -1,58 +1,100 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { verifyPassword } from "./password";
+import { createSession, getSession, deleteSession } from "./session";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this-in-production";
+// Admin credentials from environment
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "";
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 
-// Hash password on first run (you should set ADMIN_PASSWORD_HASH in production)
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+if (!ADMIN_PASSWORD_HASH) {
+  throw new Error(
+    "ADMIN_PASSWORD_HASH environment variable is required. " +
+    "Generate it using: node -e \"require('bcryptjs').hash('your-password', 10).then(console.log)\""
+  );
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+export interface AuthResult {
+  success: boolean;
+  sessionId?: string;
+  error?: string;
 }
 
-export function generateToken(username: string): string {
-  return jwt.sign({ username }, JWT_SECRET, { expiresIn: "24h" });
+export async function authenticate(
+  username: string,
+  password: string,
+  rememberMe: boolean = false
+): Promise<AuthResult> {
+  // Validate username matches
+  if (username !== ADMIN_USERNAME) {
+    return {
+      success: false,
+      error: "Invalid credentials",
+    };
+  }
+
+  // Verify password
+  if (!ADMIN_PASSWORD_HASH) {
+    return {
+      success: false,
+      error: "Server configuration error",
+    };
+  }
+  
+  const isValid = await verifyPassword(password, ADMIN_PASSWORD_HASH);
+  
+  if (!isValid) {
+    return {
+      success: false,
+      error: "Invalid credentials",
+    };
+  }
+
+  // Create session
+  const sessionId = createSession(username, rememberMe);
+
+  return {
+    success: true,
+    sessionId,
+  };
 }
 
-export function verifyToken(token: string): { username: string } | null {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { username: string };
-    return decoded;
-  } catch (error) {
+export function getSessionFromCookie(cookieHeader: string | null): string | null {
+  if (!cookieHeader) {
     return null;
   }
+
+  const cookies = cookieHeader.split(";").map((c) => c.trim());
+  const sessionCookie = cookies.find((c) => c.startsWith("admin_session="));
+
+  if (!sessionCookie) {
+    return null;
+  }
+
+  return sessionCookie.split("=")[1] || null;
 }
 
-export async function authenticate(username: string, password: string): Promise<string | null> {
-  // For initial setup, check against plain password if no hash exists
-  const plainPassword = process.env.ADMIN_PASSWORD || "changeme123";
-  
-  if (username === ADMIN_USERNAME) {
-    if (ADMIN_PASSWORD_HASH) {
-      const isValid = await verifyPassword(password, ADMIN_PASSWORD_HASH);
-      if (isValid) {
-        return generateToken(username);
-      }
-    } else {
-      // First-time setup: compare with plain password
-      if (password === plainPassword) {
-        return generateToken(username);
-      }
-    }
+export function verifySession(sessionId: string | null): {
+  authenticated: boolean;
+  username?: string;
+} {
+  if (!sessionId) {
+    return { authenticated: false };
   }
-  
-  return null;
+
+  const session = getSession(sessionId);
+
+  if (!session) {
+    return { authenticated: false };
+  }
+
+  return {
+    authenticated: true,
+    username: session.username,
+  };
 }
 
-export function getAuthTokenFromRequest(request: Request): string | null {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    return authHeader.substring(7);
+export function logout(sessionId: string | null): void {
+  if (sessionId) {
+    deleteSession(sessionId);
   }
-  return null;
 }
 

@@ -6,11 +6,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 
-export default function AdminLogin() {
+export default function ResetRequest() {
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { theme } = useTheme();
@@ -18,30 +17,31 @@ export default function AdminLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess(false);
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/reset-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ username, password, rememberMe }),
+        body: JSON.stringify({ username }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        router.push("/admin");
-        router.refresh();
+        setSuccess(true);
+        // In production, show message that email was sent
+        // For now, show success message
       } else {
         if (response.status === 429) {
           const retryAfter = data.retryAfter || 1800;
           const minutes = Math.ceil(retryAfter / 60);
           setError(
-            `Too many login attempts. Please try again in ${minutes} minute${minutes > 1 ? "s" : ""}.`
+            `Too many requests. Please try again in ${minutes} minute${minutes > 1 ? "s" : ""}.`
           );
         } else {
-          setError(data.error || "Invalid credentials");
+          setError(data.error || "An error occurred");
         }
       }
     } catch (err) {
@@ -69,19 +69,26 @@ export default function AdminLogin() {
             theme === "dark" ? "text-white" : "text-slate-900"
           }`}
         >
-          Admin Login
+          Reset Password
         </h1>
         <p
           className={`mb-6 ${
             theme === "dark" ? "text-white/70" : "text-slate-600"
           }`}
         >
-          Please sign in to access the admin panel
+          Enter your username to receive a password reset link
         </p>
 
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 text-sm">
+            If the username exists, a password reset link has been sent. Check
+            the console for the reset token (development only).
           </div>
         )}
 
@@ -105,66 +112,29 @@ export default function AdminLogin() {
                   : "border-slate-300 bg-white text-slate-900"
               } focus:outline-none focus:ring-2 focus:ring-green-500`}
               placeholder="Enter username"
-              disabled={loading}
+              disabled={loading || success}
             />
-          </div>
-
-          <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-white" : "text-slate-700"
-              }`}
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className={`w-full px-4 py-2 rounded-lg border ${
-                theme === "dark"
-                  ? "border-white/10 bg-white/5 text-white placeholder-white/50"
-                  : "border-slate-300 bg-white text-slate-900"
-              } focus:outline-none focus:ring-2 focus:ring-green-500`}
-              placeholder="Enter password"
-              disabled={loading}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <label
-              className={`flex items-center gap-2 text-sm ${
-                theme === "dark" ? "text-white/90" : "text-slate-700"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="rounded"
-                disabled={loading}
-              />
-              Remember me
-            </label>
-            <Link
-              href="/admin/reset-request"
-              className={`text-sm hover:underline ${
-                theme === "dark" ? "text-green-400" : "text-green-600"
-              }`}
-            >
-              Forgot password?
-            </Link>
           </div>
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || success}
             className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Sending..." : success ? "Sent" : "Send Reset Link"}
           </Button>
         </form>
+
+        <div className="mt-4 text-center">
+          <Link
+            href="/admin/login"
+            className={`text-sm hover:underline ${
+              theme === "dark" ? "text-green-400" : "text-green-600"
+            }`}
+          >
+            Back to login
+          </Link>
+        </div>
       </div>
     </div>
   );
