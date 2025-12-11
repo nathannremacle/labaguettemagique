@@ -1,8 +1,5 @@
 import { randomBytes } from "crypto";
-
-// Hardcoded credentials - change these in the source code if needed
-const ADMIN_USERNAME = "admin";
-let ADMIN_PASSWORD = "password";
+import { getDatabase } from "./db";
 
 export interface Session {
   sessionId: string;
@@ -34,14 +31,38 @@ export interface AuthResult {
 }
 
 /**
+ * Get admin user credentials from database
+ * @returns Object with username and password, or null if not found
+ */
+function getAdminUser(): { username: string; password: string } | null {
+  try {
+    const db = getDatabase();
+    const user = db.prepare('SELECT username, password FROM admin_users LIMIT 1').get() as { username: string; password: string } | undefined;
+    return user || null;
+  } catch (error) {
+    console.error("Error loading admin user from database:", error);
+    return null;
+  }
+}
+
+/**
  * Authenticate user with username and password
  * @param username - The username to authenticate
  * @param password - The password to authenticate
  * @returns AuthResult with success status and sessionId if successful
  */
 export function authenticate(username: string, password: string): AuthResult {
+  const adminUser = getAdminUser();
+  
+  if (!adminUser) {
+    return {
+      success: false,
+      error: "Admin user not configured",
+    };
+  }
+
   // Simple string comparison (no hashing to avoid hash issues)
-  if (username.trim() !== ADMIN_USERNAME || password.trim() !== ADMIN_PASSWORD) {
+  if (username.trim() !== adminUser.username || password.trim() !== adminUser.password) {
     return {
       success: false,
       error: "Invalid credentials",
@@ -49,7 +70,7 @@ export function authenticate(username: string, password: string): AuthResult {
   }
 
   // Create session
-  const sessionId = createSession(ADMIN_USERNAME);
+  const sessionId = createSession(adminUser.username);
 
   return {
     success: true,
@@ -152,41 +173,64 @@ export function changePassword(currentPassword: string, newPassword: string): {
   success: boolean;
   error?: string;
 } {
-  // Verify current password
-  if (currentPassword.trim() !== ADMIN_PASSWORD) {
+  try {
+    const db = getDatabase();
+    const adminUser = getAdminUser();
+    
+    if (!adminUser) {
+      return {
+        success: false,
+        error: "Admin user not configured",
+      };
+    }
+
+    // Verify current password
+    if (currentPassword.trim() !== adminUser.password) {
+      return {
+        success: false,
+        error: "Current password is incorrect",
+      };
+    }
+
+    // Validate new password
+    if (!newPassword || newPassword.trim().length === 0) {
+      return {
+        success: false,
+        error: "New password cannot be empty",
+      };
+    }
+
+    if (newPassword.length < 3) {
+      return {
+        success: false,
+        error: "New password must be at least 3 characters long",
+      };
+    }
+
+    // Update password in database
+    const trimmedPassword = newPassword.trim();
+    db.prepare(`
+      UPDATE admin_users 
+      SET password = ?, updated_at = CURRENT_TIMESTAMP 
+      WHERE username = ?
+    `).run(trimmedPassword, adminUser.username);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error changing password:", error);
     return {
       success: false,
-      error: "Current password is incorrect",
+      error: "Failed to update password in database",
     };
   }
-
-  // Validate new password
-  if (!newPassword || newPassword.trim().length === 0) {
-    return {
-      success: false,
-      error: "New password cannot be empty",
-    };
-  }
-
-  if (newPassword.length < 3) {
-    return {
-      success: false,
-      error: "New password must be at least 3 characters long",
-    };
-  }
-
-  // Update password
-  ADMIN_PASSWORD = newPassword.trim();
-
-  return {
-    success: true,
-  };
 }
 
 /**
  * Get the current admin username (for display purposes)
  */
 export function getAdminUsername(): string {
-  return ADMIN_USERNAME;
+  const adminUser = getAdminUser();
+  return adminUser?.username || "admin";
 }
-

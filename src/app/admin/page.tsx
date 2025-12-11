@@ -42,6 +42,7 @@ function SortableCategory({
   isExpanded,
   onToggleExpand,
   formatPrice,
+  onQuickModify,
 }: {
   category: MenuCategory;
   theme: string;
@@ -57,6 +58,7 @@ function SortableCategory({
   isExpanded: boolean;
   onToggleExpand: () => void;
   formatPrice: (price: string | undefined) => string;
+  onQuickModify: (item: MenuItem, categoryId: string, itemId: number) => void;
 }) {
   const {
     attributes,
@@ -200,8 +202,8 @@ function SortableCategory({
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                        <div className="flex-1 min-w-0">
                           <h3 className={`font-semibold mb-1 ${
                             theme === "dark" ? "text-white" : "text-slate-900"
                           }`}>
@@ -222,11 +224,24 @@ function SortableCategory({
                             </p>
                           )}
                         </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          {item.id !== undefined && (
-                            <>
-                              <Button
-                                onClick={() => {
+                        {item.id !== undefined && (
+                          <div className="flex flex-wrap gap-2 flex-shrink-0">
+                            <Button
+                              onClick={() => {
+                                if (item.id !== undefined) {
+                                  onQuickModify(item, category.id, item.id);
+                                }
+                              }}
+                              variant="outline"
+                              className="text-sm px-2 sm:px-3 py-2 whitespace-nowrap"
+                            >
+                              <Edit className="h-4 w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Modifier rapidement</span>
+                              <span className="sm:hidden">Rapide</span>
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                if (item.id !== undefined) {
                                   // Find and trigger edit mode
                                   const itemElement = document.querySelector(
                                     `[data-item-id="${item.id}"]`
@@ -237,26 +252,28 @@ function SortableCategory({
                                     // Scroll to item
                                     itemElement.scrollIntoView({ behavior: "smooth", block: "center" });
                                   }
-                                }}
-                                variant="outline"
-                                className="text-sm px-3 py-2"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => {
-                                  if (item.id !== undefined) {
-                                    handleDeleteItem(category.id, item.id, item.name);
-                                  }
-                                }}
-                                variant="outline"
-                                className="text-red-500 hover:text-red-700 text-sm px-3 py-2"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                                }
+                              }}
+                              variant="outline"
+                              className="text-sm px-2 sm:px-3 py-2"
+                            >
+                              <Edit className="h-4 w-4 mr-1 sm:mr-2" />
+                              Modifier
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                if (item.id !== undefined) {
+                                  handleDeleteItem(category.id, item.id, item.name);
+                                }
+                              }}
+                              variant="outline"
+                              className="text-red-500 hover:text-red-700 text-sm px-2 sm:px-3 py-2"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
+                              Supprimer
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -382,6 +399,10 @@ export default function AdminDashboard() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+  const [quickModifyItem, setQuickModifyItem] = useState<{ item: MenuItem; categoryId: string; itemId: number } | null>(null);
+  const [quickModifyData, setQuickModifyData] = useState<MenuItem | null>(null);
+  const [uploadingQuickModifyImage, setUploadingQuickModifyImage] = useState(false);
+  const [quickModifyImagePreview, setQuickModifyImagePreview] = useState<string | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
 
@@ -1900,6 +1921,11 @@ export default function AdminDashboard() {
                     });
                   }}
                   formatPrice={formatPrice}
+                  onQuickModify={(item, categoryId, itemId) => {
+                    setQuickModifyItem({ item, categoryId, itemId });
+                    setQuickModifyData({ ...item });
+                    setQuickModifyImagePreview(null);
+                  }}
                 />
               ))
             ) : (
@@ -1918,6 +1944,219 @@ export default function AdminDashboard() {
           </SortableContext>
         </DndContext>
       </main>
+
+      {/* Quick Modify Item Dialog */}
+      {quickModifyItem && quickModifyData && (
+        <Dialog
+          isOpen={!!quickModifyItem}
+          onClose={() => {
+            setQuickModifyItem(null);
+            setQuickModifyData(null);
+            setQuickModifyImagePreview(null);
+          }}
+          title={quickModifyData.name || "Modifier l'article"}
+        >
+          <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
+            {/* Image */}
+            <div className="relative w-full h-64 sm:h-96 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 shadow-lg">
+              {(quickModifyImagePreview || quickModifyData.image) && (
+                <img
+                  src={quickModifyImagePreview || quickModifyData.image}
+                  alt={quickModifyData.name || "Image de l'article"}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              )}
+              {!quickModifyImagePreview && !quickModifyData.image && (
+                <div className={`w-full h-full flex items-center justify-center ${
+                  theme === "dark" ? "text-white/50" : "text-slate-400"
+                }`}>
+                  Aucune image
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-4 sm:space-y-5">
+              {/* Name */}
+              <div>
+                <label className={`block text-sm sm:text-base font-semibold mb-2 ${
+                  theme === "dark" ? "text-white" : "text-slate-900"
+                }`}>
+                  Nom de l'article *
+                </label>
+                <input
+                  type="text"
+                  value={quickModifyData.name || ""}
+                  onChange={(e) => setQuickModifyData({ ...quickModifyData, name: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5 text-white placeholder-white/50"
+                      : "border-slate-300 bg-white text-slate-900"
+                  } focus:outline-none focus:ring-2 focus:ring-green-500 text-base`}
+                  placeholder="Ex: Roi Dagobert"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className={`block text-sm sm:text-base font-semibold mb-2 ${
+                  theme === "dark" ? "text-white" : "text-slate-900"
+                }`}>
+                  Description
+                </label>
+                <textarea
+                  value={quickModifyData.description || ""}
+                  onChange={(e) => setQuickModifyData({ ...quickModifyData, description: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5 text-white placeholder-white/50"
+                      : "border-slate-300 bg-white text-slate-900"
+                  } focus:outline-none focus:ring-2 focus:ring-green-500 resize-y text-base`}
+                  placeholder="Description détaillée de l'article..."
+                  rows={4}
+                />
+              </div>
+
+              {/* Price */}
+              <div>
+                <label className={`block text-sm sm:text-base font-semibold mb-2 ${
+                  theme === "dark" ? "text-white" : "text-slate-900"
+                }`}>
+                  Prix *
+                </label>
+                <input
+                  type="text"
+                  value={quickModifyData.price || ""}
+                  onChange={(e) => {
+                    const formatted = formatPriceInput(e.target.value);
+                    setQuickModifyData({ ...quickModifyData, price: formatted });
+                  }}
+                  onBlur={(e) => {
+                    let value = e.target.value.trim();
+                    if (value && !value.includes('€')) {
+                      value = value + ' €';
+                      setQuickModifyData({ ...quickModifyData, price: value });
+                    }
+                  }}
+                  className={`w-full px-4 py-3 rounded-xl border ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5 text-white placeholder-white/50"
+                      : "border-slate-300 bg-white text-slate-900"
+                  } focus:outline-none focus:ring-2 focus:ring-green-500 text-base`}
+                  placeholder="Ex: 5,50 - 6,50 €"
+                />
+              </div>
+
+              {/* Image Upload */}
+              <div>
+                <label className={`block text-sm sm:text-base font-semibold mb-2 ${
+                  theme === "dark" ? "text-white" : "text-slate-900"
+                }`}>
+                  Image
+                </label>
+                <div className="space-y-3">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setUploadingQuickModifyImage(true);
+                        try {
+                          // Create preview
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setQuickModifyImagePreview(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+
+                          // Upload file
+                          const formData = new FormData();
+                          formData.append("file", file);
+                          
+                          const response = await fetch("/api/upload", {
+                            method: "POST",
+                            credentials: "include",
+                            body: formData,
+                          });
+
+                          if (response.ok) {
+                            const data = await response.json();
+                            setQuickModifyData({ ...quickModifyData, image: data.url });
+                            setQuickModifyImagePreview(data.url);
+                          } else {
+                            const error = await response.json();
+                            alert(error.error || "Erreur lors du téléchargement de l'image");
+                          }
+                        } catch (error) {
+                          console.error("Upload error:", error);
+                          alert("Erreur lors du téléchargement de l'image");
+                        } finally {
+                          setUploadingQuickModifyImage(false);
+                        }
+                      }
+                    }}
+                    className={`w-full px-4 py-2 rounded-xl border ${
+                      theme === "dark"
+                        ? "border-white/10 bg-white/5 text-white"
+                        : "border-slate-300 bg-white text-slate-900"
+                    } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                    disabled={uploadingQuickModifyImage}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Ou entrez une URL d'image"
+                    value={quickModifyData.image || ""}
+                    onChange={(e) => {
+                      setQuickModifyData({ ...quickModifyData, image: e.target.value });
+                      setQuickModifyImagePreview(null);
+                    }}
+                    className={`w-full px-4 py-3 rounded-xl border ${
+                      theme === "dark"
+                        ? "border-white/10 bg-white/5 text-white placeholder-white/50"
+                        : "border-slate-300 bg-white text-slate-900"
+                    } focus:outline-none focus:ring-2 focus:ring-green-500 text-base`}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={async () => {
+                    if (!quickModifyData.name || !quickModifyData.price) {
+                      alert("Le nom et le prix sont requis");
+                      return;
+                    }
+                    await handleSaveItem(quickModifyItem.categoryId, quickModifyItem.itemId, quickModifyData);
+                    setQuickModifyItem(null);
+                    setQuickModifyData(null);
+                    setQuickModifyImagePreview(null);
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-base font-semibold"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Enregistrer
+                </Button>
+                <Button
+                  onClick={() => {
+                    setQuickModifyItem(null);
+                    setQuickModifyData(null);
+                    setQuickModifyImagePreview(null);
+                  }}
+                  variant="outline"
+                  className="px-6 py-3 text-base"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Dialog>
+      )}
 
       {/* Change Password Dialog */}
       <Dialog
