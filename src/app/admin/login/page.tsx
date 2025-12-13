@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("");
@@ -27,16 +28,35 @@ export default function AdminLogin() {
       });
 
       const data = await response.json();
+      console.log("[Login] Response status:", response.status, "Response data:", data);
 
       if (response.ok) {
-        router.push("/admin");
-        router.refresh();
+        // Check if authentication was successful
+        if (data.success !== false && !data.error) {
+          // Login successful - cookie is set by the server response
+          // Use window.location.href for a full page reload to ensure cookies are available
+          console.log("[Login] Authentication successful, redirecting to admin dashboard");
+          setLoading(false);
+          // Small delay to ensure cookie is set
+          setTimeout(() => {
+            window.location.href = "/admin";
+          }, 100);
+          return;
+        } else {
+          // Response was ok but authentication failed
+          console.error("[Login] Authentication failed - Error:", data.error || "Invalid credentials");
+          setError(data.error || "Invalid credentials");
+          setLoading(false);
+        }
       } else {
+        // Login failed with error status
+        console.error("[Login] Authentication failed - Status:", response.status, "Error:", data.error || "Invalid credentials");
         setError(data.error || "Invalid credentials");
+        setLoading(false);
       }
     } catch (err) {
+      console.error("[Login] Network or unexpected error:", err);
       setError("An error occurred. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
@@ -48,12 +68,15 @@ export default function AdminLogin() {
       }`}
     >
       <div
-        className={`w-full max-w-md p-8 rounded-2xl border shadow-xl ${
+        className={`w-full max-w-md p-8 rounded-2xl border shadow-xl relative ${
           theme === "dark"
             ? "border-white/10 bg-slate-900"
             : "border-slate-200 bg-white"
         }`}
       >
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <h1
           className={`text-3xl font-bold mb-2 ${
             theme === "dark" ? "text-white" : "text-slate-900"

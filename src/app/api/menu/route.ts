@@ -8,10 +8,12 @@ export async function GET(request: NextRequest) {
     const data = getAllCategoriesWithItems();
     
     // Convert to API format (remove database-specific fields, convert highlight to boolean)
+    // Include item IDs as they are needed for admin functionality
     const formatted = data.map(category => ({
       id: category.id,
       label: category.label,
       items: category.items.map(item => ({
+        id: item.id,
         name: item.name,
         description: item.description,
         price: item.price,

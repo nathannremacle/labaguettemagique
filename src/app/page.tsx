@@ -8,15 +8,15 @@ import {
   MapPin,
   PhoneCall,
   Mail,
-  Moon,
-  Sun,
   Menu,
   X,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { contactInfo, openingHours, images, getWhatsAppUrl } from "@/lib/website-data";
 import Image from "next/image";
+import Link from "next/link";
 import { useTheme } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { createSlug } from "@/lib/utils";
 
 type RestaurantStatus = {
@@ -63,14 +63,19 @@ function FooterItemsSection() {
   }
 
   return (
-    <section className={`mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8 ${
+    <section className={`mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8 mt-16 rounded-3xl ${
       theme === "dark" ? "bg-slate-900/50" : "bg-slate-50"
     }`}>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {footerItems.map((item, index) => {
           // Generate link URL: Priority 1 - menu item, Priority 2 - regular link
           let itemUrl: string | null = null;
-          if (item.menu_category_id && item.menu_item_name) {
+          const hasMenuLink = item.menu_category_id && 
+                              item.menu_item_name && 
+                              item.menu_category_id.trim() !== "" && 
+                              item.menu_item_name.trim() !== "";
+          
+          if (hasMenuLink) {
             // Generate menu item URL
             const categorySlug = createSlug(item.menu_category_id);
             const itemSlug = createSlug(item.menu_item_name);
@@ -127,6 +132,22 @@ function FooterItemsSection() {
 
           if (hasLink && itemUrl) {
             const isExternalLink = itemUrl.startsWith("http");
+            const isMenuLink = hasMenuLink && itemUrl.startsWith("/menu/") && itemUrl.split("/").length >= 4;
+            
+            // Use Next.js Link for internal menu links to enable focus mode
+            if (isMenuLink && !isExternalLink) {
+              return (
+                <Link
+                  key={item.id}
+                  href={itemUrl}
+                  className="block group"
+                >
+                  {content}
+                </Link>
+              );
+            }
+            
+            // Use regular anchor for external links
             return (
               <a
                 key={item.id}
@@ -217,17 +238,7 @@ export default function Home() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full transition ${
-                theme === "dark"
-                  ? "text-white/70 hover:text-white hover:bg-white/10"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
+            <ThemeToggle />
             <a 
               href={getWhatsAppUrl()} 
               target="_blank" 
@@ -248,17 +259,7 @@ export default function Home() {
 
           {/* Mobile menu */}
           <div className="md:hidden flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full transition ${
-                theme === "dark"
-                  ? "text-white/70 hover:text-white hover:bg-white/10"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
+            <ThemeToggle />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className={`p-2 rounded-full transition ${
@@ -553,7 +554,7 @@ export default function Home() {
 
       <footer
         id="contact"
-        className={`mt-8 border-t pt-8 ${
+        className={`mt-16 border-t pt-8 ${
           theme === "dark"
             ? "border-white/10 bg-slate-900/80"
             : "border-slate-200 bg-slate-50"

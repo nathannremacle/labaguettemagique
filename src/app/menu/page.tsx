@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback, memo } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Tabs } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { getWhatsAppUrl } from "@/lib/website-data";
 import { useTheme } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { useCart } from "@/contexts/CartContext";
 import { MenuCategory, MenuItem } from "@/components/MenuSection";
@@ -31,13 +32,144 @@ function formatPrice(price: string | undefined): string {
   return `${price} €`;
 }
 
+// Memoized Menu Item Card Component for optimized rendering
+interface MenuItemCardProps {
+  item: MenuItem;
+  index: number;
+  activeCategory: string;
+  theme: "dark" | "light";
+  isHighlighted: boolean;
+  onItemClick: (item: MenuItem) => void;
+  onAddToCart: (item: MenuItem, hasSizeOptions: boolean) => void;
+  onImagePreload: (url: string, itemKey: string) => void;
+  itemRef: (el: HTMLDivElement | null, itemKey: string) => void;
+}
+
+const MenuItemCard = memo(function MenuItemCard({
+  item,
+  index,
+  activeCategory,
+  theme,
+  isHighlighted,
+  onItemClick,
+  onAddToCart,
+  onImagePreload,
+  itemRef,
+}: MenuItemCardProps) {
+  const imageUrl = useMemo(() => item.image || getItemImage(item.name, activeCategory, index), [item.image, item.name, activeCategory, index]);
+  const itemKey = useMemo(() => `${activeCategory}-${item.name}`, [activeCategory, item.name]);
+  const formattedPrice = useMemo(() => formatPrice(item.price), [item.price]);
+  const hasSizeOptions = useMemo(() => (item.price?.includes(" - ") ?? false), [item.price]);
+
+  const handleMouseEnter = useCallback(() => {
+    onImagePreload(imageUrl, itemKey);
+  }, [imageUrl, itemKey, onImagePreload]);
+
+  const handleCardClick = useCallback(() => {
+    onItemClick(item);
+  }, [item, onItemClick]);
+
+  const handleAddClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddToCart(item, hasSizeOptions);
+  }, [item, hasSizeOptions, onAddToCart]);
+
+  return (
+    <div
+      ref={(el) => itemRef(el, itemKey)}
+      className={cn(
+        "h-full flex flex-col",
+        isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 rounded-2xl transition-all" : ""
+      )}
+    >
+      <Card
+        className={cn(
+          item.highlight ? "border-amber-400/40 bg-white/10" : undefined,
+          "cursor-pointer h-full flex flex-col"
+        )}
+        onMouseEnter={handleMouseEnter}
+        onClick={handleCardClick}
+      >
+        <div className="relative w-full h-48 overflow-hidden rounded-t-lg bg-slate-200 dark:bg-slate-800">
+          <Image
+            src={imageUrl}
+            alt={item.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            unoptimized={true}
+            priority={false}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (!target.src.includes('/images/placeholders/')) {
+                target.src = `/images/placeholders/${activeCategory}-${index % 10}.jpg`;
+              }
+            }}
+          />
+        </div>
+        <CardHeader className="flex-shrink-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <CardTitle>{item.name}</CardTitle>
+              <CardDescription className="line-clamp-2">{item.description}</CardDescription>
+            </div>
+            {item.highlight && (
+              <span className={cn(
+                "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide flex-shrink-0",
+                theme === "dark"
+                  ? "bg-amber-400/20 text-amber-200"
+                  : "bg-amber-100 text-amber-700"
+              )}>
+                Coup de cœur
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="mt-auto flex flex-col gap-3">
+          <div className="min-h-[32px] flex items-center">
+            <span className={cn(
+              "font-bold whitespace-nowrap",
+              "text-lg sm:text-xl md:text-2xl",
+              theme === "dark" ? "text-amber-300" : "text-amber-600"
+            )}>
+              {formattedPrice}
+            </span>
+          </div>
+          <button
+            onClick={handleAddClick}
+            className={cn(
+              "w-full inline-flex items-center justify-center gap-2.5 rounded-xl",
+              "bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600",
+              "hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700",
+              "text-white px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold",
+              "transition-all duration-300 ease-out",
+              "hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/40",
+              "active:scale-[0.98] active:shadow-md",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500",
+              "shadow-md shadow-emerald-500/20",
+              "relative overflow-hidden group"
+            )}
+          >
+            <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></span>
+            <Plus className="h-4 w-4 relative z-10 transition-transform group-hover:rotate-90 duration-300" />
+            <span className="relative z-10">Ajouter au panier</span>
+          </button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+});
+
 export default function MenuPage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const [menuData, setMenuData] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const tabs = menuData.map((category) => ({ value: category.id, label: category.label }));
+  const tabs = useMemo(
+    () => menuData.map((category) => ({ value: category.id, label: category.label })),
+    [menuData]
+  );
   const [activeCategory, setActiveCategory] = useState(tabs[0]?.value ?? "");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
@@ -49,8 +181,24 @@ export default function MenuPage() {
   const [highlightedItem, setHighlightedItem] = useState<string | null>(null);
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const cartButtonRef = useRef<HTMLButtonElement>(null);
+  const preloadedImages = useRef<Set<string>>(new Set());
   const { theme } = useTheme();
   const cart = useCart();
+
+  // Helper function to preload an image
+  const preloadImage = (url: string, itemKey: string) => {
+    // Skip if already preloaded
+    if (preloadedImages.current.has(itemKey)) {
+      return;
+    }
+
+    // Create a new Image object to preload
+    const img = new window.Image();
+    img.src = url;
+    
+    // Track that we've preloaded this image
+    preloadedImages.current.add(itemKey);
+  };
 
   // Load menu data from API
   useEffect(() => {
@@ -168,15 +316,61 @@ export default function MenuPage() {
     [activeCategory, menuData]
   );
 
+  // Intersection Observer to preload images for visible items
+  useEffect(() => {
+    if (currentItems.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const itemKey = entry.target.getAttribute("data-item-key");
+            const itemIndex = parseInt(entry.target.getAttribute("data-item-index") || "0", 10);
+            
+            if (itemKey && itemIndex >= 0 && itemIndex < currentItems.length) {
+              const item = currentItems[itemIndex];
+              if (item) {
+                const imageUrl = item.image || getItemImage(item.name, activeCategory, itemIndex);
+                preloadImage(imageUrl, itemKey);
+              }
+            }
+          }
+        });
+      },
+      {
+        rootMargin: "50px", // Start preloading 50px before item enters viewport
+        threshold: 0.1,
+      }
+    );
+
+    // Observe all item cards
+    itemRefs.current.forEach((element, itemKey) => {
+      if (element) {
+        element.setAttribute("data-item-key", itemKey);
+        // Find the item index for this key
+        const itemName = itemKey.split("-").slice(1).join("-"); // Get item name from key
+        const itemIndex = currentItems.findIndex((i) => i.name === itemName);
+        if (itemIndex >= 0) {
+          element.setAttribute("data-item-index", itemIndex.toString());
+        }
+        observer.observe(element);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [currentItems, activeCategory]);
+
   // Extract size options from price string (e.g., "5,50 € - 6,50 €" means Petit/Grand)
-  const getSizeOptions = (price: string): string[] => {
+  const getSizeOptions = useCallback((price: string): string[] => {
     if (price.includes(" - ")) {
       return ["Petit", "Grand"];
     }
     return [];
-  };
+  }, []);
 
-  const handleAddToCart = (item: MenuItem, categoryId: string, qty: number = 1, size: string = "") => {
+  const handleAddToCart = useCallback((item: MenuItem, categoryId: string, qty: number = 1, size: string = "") => {
     // Add item multiple times based on quantity
     for (let i = 0; i < qty; i++) {
       const itemWithSize = size 
@@ -199,13 +393,45 @@ export default function MenuPage() {
     setTimeout(() => {
       cartButtonRef.current?.focus();
     }, 100);
-  };
+  }, [cart]);
 
-  const handleSendOrder = () => {
+  const handleSendOrder = useCallback(() => {
     const message = cart.formatWhatsAppMessage();
     const url = getWhatsAppUrl(message);
     window.open(url, "_blank");
-  };
+  }, [cart]);
+
+  // Memoized callbacks for menu item card
+  const handleItemClick = useCallback((item: MenuItem) => {
+    const categorySlug = createSlug(activeCategory);
+    const itemSlug = createSlug(item.name);
+    router.push(`/menu/${categorySlug}/${itemSlug}`);
+    setSelectedItem(item);
+    setQuantity(1);
+    setSelectedSize("");
+  }, [activeCategory, router]);
+
+  const handleItemAddToCart = useCallback((item: MenuItem, hasSizeOptions: boolean) => {
+    if (hasSizeOptions) {
+      setSelectedItem(item);
+      setSelectedSize("");
+      setQuantity(1);
+    } else {
+      handleAddToCart(item, activeCategory, 1, "");
+    }
+  }, [activeCategory, handleAddToCart]);
+
+  const handleItemRef = useCallback((el: HTMLDivElement | null, itemKey: string) => {
+    if (el) {
+      itemRefs.current.set(itemKey, el);
+    } else {
+      itemRefs.current.delete(itemKey);
+    }
+  }, []);
+
+  const handlePreloadImage = useCallback((url: string, itemKey: string) => {
+    preloadImage(url, itemKey);
+  }, []);
 
   if (!tabs.length) {
     return null;
@@ -227,29 +453,32 @@ export default function MenuPage() {
           }`}>
             ← Retour
           </Link>
-          <button
-            ref={cartButtonRef}
-            onClick={() => setCartOpen(true)}
-            className={`relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              cartButtonPulse ? "scale-110" : "scale-100"
-            } ${
-              theme === "dark"
-                ? "bg-white/10 hover:bg-white/20 text-white"
-                : "bg-slate-100 hover:bg-slate-200 text-slate-900"
-            }`}
-          >
-            <ShoppingCart className={`h-5 w-5 transition-transform ${
-              cartButtonPulse ? "rotate-12" : "rotate-0"
-            }`} />
-            <span className="font-medium">Panier</span>
-            {cart.getTotalItems() > 0 && (
-              <span className={`absolute -top-2 -right-2 min-w-[24px] h-6 px-2 rounded-full flex items-center justify-center text-xs font-bold animate-bounce-in ${
-                theme === "dark" ? "bg-green-500 text-white" : "bg-green-600 text-white"
-              } shadow-lg`}>
-                {cart.getTotalItems()}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <button
+              ref={cartButtonRef}
+              onClick={() => setCartOpen(true)}
+              className={`relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                cartButtonPulse ? "scale-110" : "scale-100"
+              } ${
+                theme === "dark"
+                  ? "bg-white/10 hover:bg-white/20 text-white"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-900"
+              }`}
+            >
+              <ShoppingCart className={`h-5 w-5 transition-transform ${
+                cartButtonPulse ? "rotate-12" : "rotate-0"
+              }`} />
+              <span className="font-medium">Panier</span>
+              {cart.getTotalItems() > 0 && (
+                <span className={`absolute -top-2 -right-2 min-w-[24px] h-6 px-2 rounded-full flex items-center justify-center text-xs font-bold animate-bounce-in ${
+                  theme === "dark" ? "bg-green-500 text-white" : "bg-green-600 text-white"
+                } shadow-lg`}>
+                  {cart.getTotalItems()}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -289,100 +518,25 @@ export default function MenuPage() {
                 className="w-full"
               />
 
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {currentItems.map((item, index) => {
-              const imageUrl = item.image || getItemImage(item.name, activeCategory, index);
-              const itemKey = `${activeCategory}-${item.name}`;
-              const isHighlighted = highlightedItem === itemKey;
-              return (
-              <div
-                key={itemKey}
-                ref={(el) => {
-                  if (el) {
-                    itemRefs.current.set(itemKey, el);
-                  } else {
-                    itemRefs.current.delete(itemKey);
-                  }
-                }}
-                className={isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 rounded-2xl transition-all" : ""}
-              >
-              <Card
-                className={cn(
-                  item.highlight ? "border-amber-400/40 bg-white/10" : undefined,
-                  "cursor-pointer"
-                )}
-                onClick={() => {
-                  // Navigate to the item URL and open dialog
-                  const categorySlug = createSlug(activeCategory);
-                  const itemSlug = createSlug(item.name);
-                  router.push(`/menu/${categorySlug}/${itemSlug}`);
-                  setSelectedItem(item);
-                  setQuantity(1);
-                  setSelectedSize("");
-                }}
-              >
-                <div className="relative w-full h-48 overflow-hidden rounded-t-lg bg-slate-200 dark:bg-slate-800">
-                  <Image
-                    src={imageUrl}
-                    alt={item.name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    unoptimized={true}
-                    priority={false}
-                    onError={(e) => {
-                      // Fallback to a default placeholder if the original fails
-                      const target = e.target as HTMLImageElement;
-                      if (!target.src.includes('/images/placeholders/')) {
-                        target.src = `/images/placeholders/${activeCategory}-${index % 10}.jpg`;
-                      }
-                    }}
-                  />
-                </div>
-                <CardHeader>
-                  <CardTitle>{item.name}</CardTitle>
-                  <CardDescription className="line-clamp-2">{item.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className={`text-2xl font-bold whitespace-nowrap ${
-                      theme === "dark" ? "text-amber-300" : "text-amber-600"
-                    }`}>
-                      {formatPrice(item.price)}
-                    </span>
-                    {item.highlight && (
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                        theme === "dark"
-                          ? "bg-amber-400/20 text-amber-200"
-                          : "bg-amber-100 text-amber-700"
-                      }`}>
-                        Coup de cœur
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // If item has size options, open dialog. Otherwise add directly
-                      const sizeOptions = getSizeOptions(item.price);
-                      if (sizeOptions.length > 0) {
-                        setSelectedItem(item);
-                        setSelectedSize("");
-                        setQuantity(1);
-                      } else {
-                        handleAddToCart(item, activeCategory, 1, "");
-                      }
-                    }}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 text-sm font-semibold transition-all hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Ajouter au panier
-                  </button>
-                </CardContent>
-              </Card>
-              </div>
-            );
-            }            )}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+                {currentItems.map((item, index) => {
+                  const itemKey = `${activeCategory}-${item.name}`;
+                  const isHighlighted = highlightedItem === itemKey;
+                  return (
+                    <MenuItemCard
+                      key={itemKey}
+                      item={item}
+                      index={index}
+                      activeCategory={activeCategory}
+                      theme={theme}
+                      isHighlighted={isHighlighted}
+                      onItemClick={handleItemClick}
+                      onAddToCart={handleItemAddToCart}
+                      onImagePreload={handlePreloadImage}
+                      itemRef={handleItemRef}
+                    />
+                  );
+                })}
               </div>
             </>
           )}
@@ -575,9 +729,11 @@ export default function MenuPage() {
               
               {/* Price */}
               <div className="flex items-center gap-2 pb-2">
-                <span className={`text-3xl sm:text-4xl font-bold ${
+                <span className={cn(
+                  "font-bold",
+                  "text-2xl sm:text-3xl md:text-4xl",
                   theme === "dark" ? "text-amber-300" : "text-amber-600"
-                }`}>
+                )}>
                   {formatPrice(selectedItem.price)}
                 </span>
               </div>
@@ -671,17 +827,22 @@ export default function MenuPage() {
                   setSelectedSize("");
                 }}
                 className={cn(
-                  "w-full inline-flex items-center justify-center gap-2 rounded-full",
-                  "bg-green-600 hover:bg-green-700 text-white",
-                  "px-6 py-4 sm:py-5 text-base sm:text-lg font-semibold",
-                  "transition-all hover:scale-[1.02] active:scale-95",
+                  "w-full inline-flex items-center justify-center gap-3 rounded-xl",
+                  "bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600",
+                  "hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700",
+                  "text-white px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold",
+                  "transition-all duration-300 ease-out",
+                  "hover:scale-[1.02] hover:shadow-xl hover:shadow-emerald-500/50",
+                  "active:scale-[0.98] active:shadow-lg",
                   "touch-manipulation min-h-[56px]",
-                  "shadow-lg shadow-green-600/30 hover:shadow-xl hover:shadow-green-600/40",
-                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500"
+                  "shadow-lg shadow-emerald-500/30",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500",
+                  "relative overflow-hidden group"
                 )}
               >
-                <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
-                <span>Ajouter au panier {quantity > 1 && `(${quantity})`}</span>
+                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></span>
+                <Plus className="h-5 w-5 sm:h-6 sm:w-6 relative z-10 transition-transform group-hover:rotate-90 duration-300" />
+                <span className="relative z-10">Ajouter au panier {quantity > 1 && `(${quantity})`}</span>
               </button>
             </div>
           </div>

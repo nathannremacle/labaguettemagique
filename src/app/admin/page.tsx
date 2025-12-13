@@ -6,8 +6,9 @@ import { MenuSection, MenuCategory, MenuItem } from "@/components/MenuSection";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { useTheme } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { EditableMenuItem } from "@/components/admin/EditableMenuItem";
-import { LogOut, Plus, ToggleLeft, ToggleRight, Edit, Save, X, Sun, Moon, GripVertical, Trash2, Eye, Search, ChevronDown, ChevronUp, ExternalLink, KeyRound, User } from "lucide-react";
+import { LogOut, Plus, ToggleLeft, ToggleRight, Edit, Save, X, GripVertical, Trash2, Eye, Search, ChevronDown, ChevronUp, ExternalLink, Lock } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -36,13 +37,14 @@ function SortableCategory({
   handleUpdateCategory,
   handleCancelEditCategory,
   handleStartEditCategory,
+  handleDeleteCategory,
   handleSaveItem,
   handleDeleteItem,
-  handleDeleteCategory,
   isExpanded,
   onToggleExpand,
   formatPrice,
-  onQuickModify,
+  searchQuery,
+  filterCategoryItems,
 }: {
   category: MenuCategory;
   theme: string;
@@ -52,13 +54,14 @@ function SortableCategory({
   handleUpdateCategory: (id: string) => void;
   handleCancelEditCategory: () => void;
   handleStartEditCategory: (category: MenuCategory) => void;
+  handleDeleteCategory: (id: string) => void;
   handleSaveItem: (categoryId: string, itemId: number, item: MenuItem) => void;
-  handleDeleteItem: (categoryId: string, itemId: number, itemName?: string) => void;
-  handleDeleteCategory: (categoryId: string) => void;
+  handleDeleteItem: (categoryId: string, itemId: number) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
   formatPrice: (price: string | undefined) => string;
-  onQuickModify: (item: MenuItem, categoryId: string, itemId: number) => void;
+  searchQuery: string;
+  filterCategoryItems: (items: MenuItem[]) => MenuItem[];
 }) {
   const {
     attributes,
@@ -149,22 +152,28 @@ function SortableCategory({
                   </span>
                 </h2>
               </button>
-              <Button
-                onClick={() => handleStartEditCategory(category)}
-                variant="outline"
-                className="text-sm"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Modifier
-              </Button>
-              <Button
-                onClick={() => handleDeleteCategory(category.id)}
-                variant="outline"
-                className="text-red-500 hover:text-red-700 text-sm"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleStartEditCategory(category)}
+                  variant="outline"
+                  className="text-sm"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Modifier
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (confirm(`Êtes-vous sûr de vouloir supprimer la catégorie "${category.label}" ? Cette action supprimera également tous les articles de cette catégorie.`)) {
+                      handleDeleteCategory(category.id);
+                    }
+                  }}
+                  variant="outline"
+                  className="text-sm text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer
+                </Button>
+              </div>
             </>
           )}
         </div>
@@ -173,16 +182,20 @@ function SortableCategory({
       {/* Items List - Expandable */}
       {isExpanded && (
         <div className="mt-4 space-y-2">
-          {category.items && category.items.length > 0 ? (
-            category.items.map((item, index) => {
+          {(() => {
+            const filteredItems = filterCategoryItems(category.items || []);
+            const currentTheme = theme; // Capture theme in closure
+            return filteredItems.length > 0 ? (
+              filteredItems.map((item, index) => {
               // Use index as fallback key if id is undefined
-              const itemKey = item.id !== undefined ? item.id : `item-${index}`;
+              const itemKey = item.id != null && typeof item.id === 'number' ? item.id : `item-${index}`;
               
               return (
                 <div
                   key={itemKey}
+                  data-item-id={item.id}
                   className={`p-4 rounded-lg border ${
-                    theme === "dark"
+                    currentTheme === "dark"
                       ? "border-white/10 bg-white/5"
                       : "border-slate-200 bg-white"
                   }`}
@@ -202,91 +215,111 @@ function SortableCategory({
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
                           <h3 className={`font-semibold mb-1 ${
-                            theme === "dark" ? "text-white" : "text-slate-900"
+                            currentTheme === "dark" ? "text-white" : "text-slate-900"
                           }`}>
                             {item.name || "Article sans nom"}
                           </h3>
                           {item.description && (
                             <p className={`text-sm mb-2 ${
-                              theme === "dark" ? "text-white/70" : "text-slate-600"
+                              currentTheme === "dark" ? "text-white/70" : "text-slate-600"
                             } line-clamp-2`}>
                               {item.description}
                             </p>
                           )}
                           {item.price && (
                             <p className={`text-sm font-semibold ${
-                              theme === "dark" ? "text-amber-300" : "text-amber-600"
+                              currentTheme === "dark" ? "text-amber-300" : "text-amber-600"
                             }`}>
                               {formatPrice(item.price)}
                             </p>
                           )}
                         </div>
-                        {item.id !== undefined && (
-                          <div className="flex flex-wrap gap-2 flex-shrink-0">
-                            <Button
-                              onClick={() => {
-                                if (item.id !== undefined) {
-                                  onQuickModify(item, category.id, item.id);
-                                }
-                              }}
-                              variant="outline"
-                              className="text-sm px-2 sm:px-3 py-2 whitespace-nowrap"
-                            >
-                              <Edit className="h-4 w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Modifier rapidement</span>
-                              <span className="sm:hidden">Rapide</span>
-                            </Button>
-                            <Button
-                              onClick={() => {
-                                if (item.id !== undefined) {
-                                  // Find and trigger edit mode
-                                  const itemElement = document.querySelector(
-                                    `[data-item-id="${item.id}"]`
-                                  );
-                                  if (itemElement) {
-                                    const editButton = itemElement.querySelector('button[aria-label="Edit"]') as HTMLButtonElement;
-                                    editButton?.click();
-                                    // Scroll to item
-                                    itemElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                        <div className="flex gap-2 flex-shrink-0">
+                          {item.id != null && typeof item.id === 'number' ? (
+                            <>
+                              <Button
+                                onClick={() => {
+                                  // Collapse the category first to show the collapsed view with EditableMenuItem
+                                  onToggleExpand();
+                                  // Wait for the collapse animation, then find and trigger edit mode
+                                  setTimeout(() => {
+                                    const itemElement = document.querySelector(
+                                      `[data-item-id="${item.id}"]`
+                                    );
+                                    if (itemElement) {
+                                      // Scroll to item first
+                                      itemElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                                      // Then find and click the edit button
+                                      setTimeout(() => {
+                                        const editButton = itemElement.querySelector('button[aria-label="Edit"]') as HTMLButtonElement;
+                                        if (editButton) {
+                                          editButton.click();
+                                        } else {
+                                          // Fallback: try to find any button with Edit icon
+                                          const buttons = itemElement.querySelectorAll('button');
+                                          buttons.forEach(btn => {
+                                            const icon = btn.querySelector('svg');
+                                            if (icon && icon.classList.contains('lucide-edit')) {
+                                              btn.click();
+                                            }
+                                          });
+                                        }
+                                      }, 300);
+                                    }
+                                  }, 100);
+                                }}
+                                variant="outline"
+                                className={`text-sm px-3 py-2 ${
+                                  currentTheme === "dark" 
+                                    ? "border-white/20 text-white hover:bg-white/10" 
+                                    : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                                }`}
+                                aria-label="Edit"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  if (item.id != null && typeof item.id === 'number' && confirm(`Êtes-vous sûr de vouloir supprimer "${item.name || 'cet article'}" ?`)) {
+                                    handleDeleteItem(category.id, item.id);
                                   }
-                                }
-                              }}
-                              variant="outline"
-                              className="text-sm px-2 sm:px-3 py-2"
-                            >
-                              <Edit className="h-4 w-4 mr-1 sm:mr-2" />
-                              Modifier
-                            </Button>
-                            <Button
-                              onClick={() => {
-                                if (item.id !== undefined) {
-                                  handleDeleteItem(category.id, item.id, item.name);
-                                }
-                              }}
-                              variant="outline"
-                              className="text-red-500 hover:text-red-700 text-sm px-2 sm:px-3 py-2"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
-                              Supprimer
-                            </Button>
-                          </div>
-                        )}
+                                }}
+                                variant="outline"
+                                className={`text-sm px-3 py-2 ${
+                                  currentTheme === "dark"
+                                    ? "text-red-400 hover:text-red-300 border-white/20 hover:bg-red-500/10"
+                                    : "text-red-500 hover:text-red-700 border-slate-300 hover:bg-red-50"
+                                }`}
+                                aria-label="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <span className={`text-xs italic ${
+                              currentTheme === "dark" ? "text-white/50" : "text-slate-500"
+                            }`}>
+                              ID manquant
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               );
-            })
-          ) : (
-            <p className={`text-sm italic ${
-              theme === "dark" ? "text-white/50" : "text-slate-500"
-            }`}>
-              Vide
-            </p>
-          )}
+              })
+            ) : (
+              <p className={`text-sm italic ${
+                currentTheme === "dark" ? "text-white/50" : "text-slate-500"
+              }`}>
+                {searchQuery ? "Aucun article trouvé dans cette catégorie" : "Vide"}
+              </p>
+            );
+          })()}
         </div>
       )}
       
@@ -377,7 +410,6 @@ function SortableItem({
 export default function AdminDashboard() {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [username, setUsername] = useState<string>("");
   const [menuData, setMenuData] = useState<MenuCategory[]>([]);
   const [newItem, setNewItem] = useState<Partial<MenuItem>>({});
   const [newItemCategoryId, setNewItemCategoryId] = useState<string>("");
@@ -390,19 +422,17 @@ export default function AdminDashboard() {
   const [showAllItems, setShowAllItems] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [footerItems, setFooterItems] = useState<Array<{id: number; title: string; description?: string; icon?: string; link?: string; menu_item_name?: string; menu_category_id?: string; visible: boolean}>>([]);
-  const [newFooterItem, setNewFooterItem] = useState({ title: "", description: "", icon: "", link: "", menu_item_name: "", menu_category_id: "", visible: true });
+  const [footerItems, setFooterItems] = useState<Array<{id: number; title: string; description?: string; icon?: string; link?: string; menu_category_id?: string; menu_item_name?: string; visible: boolean}>>([]);
+  const [newFooterItem, setNewFooterItem] = useState({ title: "", description: "", icon: "", link: "", menu_category_id: "", menu_item_name: "", visible: true });
   const [editingFooterItem, setEditingFooterItem] = useState<number | null>(null);
-  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [showMenuSelectorDialog, setShowMenuSelectorDialog] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
-  const [quickModifyItem, setQuickModifyItem] = useState<{ item: MenuItem; categoryId: string; itemId: number } | null>(null);
-  const [quickModifyData, setQuickModifyData] = useState<MenuItem | null>(null);
-  const [uploadingQuickModifyImage, setUploadingQuickModifyImage] = useState(false);
-  const [quickModifyImagePreview, setQuickModifyImagePreview] = useState<string | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
 
@@ -445,19 +475,28 @@ export default function AdminDashboard() {
     );
   };
 
-  // Filter items based on search query
-  const filteredItems = showAllItems
-    ? getAllItems().filter(item => {
-        if (searchQuery === "") return true;
-        const query = searchQuery.toLowerCase();
-        return (
-          (item.name && item.name.toLowerCase().includes(query)) ||
-          (item.description && item.description.toLowerCase().includes(query)) ||
-          (item.categoryLabel && item.categoryLabel.toLowerCase().includes(query)) ||
-          (item.price && item.price.toLowerCase().includes(query))
-        );
-      })
-    : [];
+  // Filter items based on search query - always compute for search functionality
+  const filteredItems = getAllItems().filter(item => {
+    if (searchQuery === "") return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      (item.name && item.name.toLowerCase().includes(query)) ||
+      (item.description && item.description.toLowerCase().includes(query)) ||
+      (item.categoryLabel && item.categoryLabel.toLowerCase().includes(query)) ||
+      (item.price && item.price.toLowerCase().includes(query))
+    );
+  });
+
+  // Helper function to filter items in a category based on search query
+  const filterCategoryItems = (items: MenuItem[]) => {
+    if (searchQuery === "") return items;
+    const query = searchQuery.toLowerCase();
+    return items.filter(item => 
+      (item.name && item.name.toLowerCase().includes(query)) ||
+      (item.description && item.description.toLowerCase().includes(query)) ||
+      (item.price && item.price.toLowerCase().includes(query))
+    );
+  };
 
   useEffect(() => {
     checkAuth();
@@ -469,17 +508,19 @@ export default function AdminDashboard() {
         credentials: "include",
       });
       const data = await response.json();
+      console.log("[Admin] Auth check response:", data);
       
       if (data.authenticated) {
         setAuthenticated(true);
-        setUsername(data.username || "admin");
         loadMenuData();
         loadStatus();
         loadFooterItems();
       } else {
+        console.log("[Admin] Not authenticated, redirecting to login");
         router.push("/admin/login");
       }
     } catch (error) {
+      console.error("[Admin] Auth check error:", error);
       router.push("/admin/login");
     } finally {
       setLoading(false);
@@ -509,11 +550,46 @@ export default function AdminDashboard() {
           // Ensure all categories have items array and items have IDs
           const normalizedData = data.map((cat: MenuCategory) => ({
             ...cat,
-            items: (cat.items || []).map((item: MenuItem) => ({
-              ...item,
-              id: item.id, // Ensure ID is preserved
-            })),
+            items: (cat.items || []).map((item: any) => {
+              // Ensure ID is preserved and properly typed as number
+              // Log detailed info if ID is missing
+              if (item.id === undefined || item.id === null) {
+                console.warn(`[Admin] Item missing ID:`, {
+                  item,
+                  itemKeys: Object.keys(item),
+                  itemIdType: typeof item.id,
+                  itemIdValue: item.id,
+                });
+              } else {
+                // Ensure ID is a number (convert if string)
+                const itemId = typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
+                if (isNaN(itemId)) {
+                  console.error(`[Admin] Item ID is not a valid number:`, {
+                    item,
+                    originalId: item.id,
+                    parsedId: itemId,
+                  });
+                }
+              }
+              // Convert ID to number if it's a string, preserve if number, or keep undefined
+              const normalizedId = item.id != null 
+                ? (typeof item.id === 'string' ? parseInt(item.id, 10) : Number(item.id))
+                : undefined;
+              
+              return {
+                ...item,
+                id: isNaN(normalizedId as number) ? undefined : normalizedId,
+              };
+            }),
           }));
+          
+          // Log summary of loaded data
+          const totalItems = normalizedData.reduce((sum, cat) => sum + (cat.items?.length || 0), 0);
+          const itemsWithIds = normalizedData.reduce((sum, cat) => 
+            sum + (cat.items || []).filter(item => item.id != null).length, 0
+          );
+          console.log(`[Admin] Loaded ${totalItems} items, ${itemsWithIds} with IDs`);
+          
           setMenuData(normalizedData);
         } else {
           // Menu data is empty - set empty array
@@ -531,6 +607,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadStatus = async () => {
+    try {
+      const response = await fetch("/api/status");
+      if (response.ok) {
+        const data = await response.json();
+        setStatus(data);
+      }
+    } catch (error) {
+      console.error("Failed to load status:", error);
+    }
+  };
+
   const loadFooterItems = async () => {
     try {
       const response = await fetch("/api/footer", {
@@ -542,18 +630,6 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error("Failed to load footer items:", error);
-    }
-  };
-
-  const loadStatus = async () => {
-    try {
-      const response = await fetch("/api/status");
-      if (response.ok) {
-        const data = await response.json();
-        setStatus(data);
-      }
-    } catch (error) {
-      console.error("Failed to load status:", error);
     }
   };
 
@@ -590,10 +666,7 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { 
-      method: "POST",
-      credentials: "include"
-    });
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/admin/login");
   };
 
@@ -602,22 +675,17 @@ export default function AdminDashboard() {
     
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError("All fields are required");
+      setPasswordError("Tous les champs sont requis");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("Le nouveau mot de passe doit contenir au moins 6 caractères");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords do not match");
-      return;
-    }
-
-    if (newPassword.length < 3) {
-      setPasswordError("New password must be at least 3 characters long");
-      return;
-    }
-
-    // Confirmation prompt
-    if (!confirm("Are you sure you want to change your password? You will need to use the new password for future logins.")) {
+      setPasswordError("Les nouveaux mots de passe ne correspondent pas");
       return;
     }
 
@@ -628,24 +696,28 @@ export default function AdminDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Success - close dialog and reset form
-        setShowChangePasswordDialog(false);
+        // Success - close modal and reset form
+        setShowPasswordModal(false);
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setPasswordError("");
-        alert("Password changed successfully!");
+        alert("Mot de passe modifié avec succès");
       } else {
-        setPasswordError(data.error || "Failed to change password");
+        setPasswordError(data.error || "Erreur lors de la modification du mot de passe");
       }
     } catch (error) {
-      setPasswordError("An error occurred. Please try again.");
+      console.error("Failed to change password:", error);
+      setPasswordError("Erreur de connexion. Veuillez réessayer.");
     } finally {
       setChangingPassword(false);
     }
@@ -682,9 +754,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteItem = async (categoryId: string, itemId: number, itemName?: string) => {
-    const itemNameText = itemName || "cet article";
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer "${itemNameText}" ?`)) return;
+  const handleDeleteItem = async (categoryId: string, itemId: number) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cet article ?")) return;
 
     try {
       const response = await fetch(
@@ -860,10 +931,9 @@ export default function AdminDashboard() {
         console.error("Failed to update category:", response.status, errorData);
         alert(`Erreur lors de la mise à jour: ${errorData.error || "Erreur inconnue"}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update category:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erreur de connexion";
-      alert(`Erreur lors de la mise à jour: ${errorMessage}`);
+      alert(`Erreur lors de la mise à jour: ${error.message || "Erreur de connexion"}`);
     }
   };
 
@@ -875,6 +945,29 @@ export default function AdminDashboard() {
   const handleCancelEditCategory = () => {
     setEditingCategory(null);
     setEditCategoryLabel("");
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      const response = await fetch(
+        `/api/menu/categories/${categoryId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        await loadMenuData();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        console.error("Failed to delete category:", response.status, errorData);
+        alert(`Erreur lors de la suppression: ${errorData.error || "Erreur inconnue"}`);
+      }
+    } catch (error: any) {
+      console.error("Failed to delete category:", error);
+      alert(`Erreur lors de la suppression: ${error.message || "Erreur de connexion"}`);
+    }
   };
 
   const handleAddCategory = async () => {
@@ -896,41 +989,6 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error("Failed to add category:", error);
-    }
-  };
-
-  const handleDeleteCategory = async (categoryId: string) => {
-    const category = menuData.find(cat => cat.id === categoryId);
-    const itemCount = category?.items?.length || 0;
-    
-    const warningMessage = itemCount > 0
-      ? `Êtes-vous sûr de vouloir supprimer la catégorie "${category?.label}" ?\n\nCette catégorie contient ${itemCount} article${itemCount > 1 ? 's' : ''}. La suppression de la catégorie supprimera également tous ses articles.`
-      : `Êtes-vous sûr de vouloir supprimer la catégorie "${category?.label}" ?`;
-    
-    if (!confirm(warningMessage)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `/api/menu/categories/${categoryId}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
-
-      if (response.ok) {
-        await loadMenuData();
-      } else {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        console.error("Failed to delete category:", response.status, errorData);
-        alert(`Erreur lors de la suppression: ${errorData.error || "Erreur inconnue"}`);
-      }
-    } catch (error) {
-      console.error("Failed to delete category:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erreur de connexion";
-      alert(`Erreur lors de la suppression: ${errorMessage}`);
     }
   };
 
@@ -966,22 +1024,6 @@ export default function AdminDashboard() {
             Panneau d'administration
           </h1>
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
-              theme === "dark"
-                ? "bg-white/5 text-white/70"
-                : "bg-slate-100 text-slate-600"
-            }`}>
-              <User className="h-4 w-4" />
-              <span className="text-sm font-medium">{username}</span>
-            </div>
-            <Button
-              onClick={() => setShowChangePasswordDialog(true)}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <KeyRound className="h-4 w-4" />
-              Changer le mot de passe
-            </Button>
             <a
               href="/"
               target="_blank"
@@ -995,25 +1037,29 @@ export default function AdminDashboard() {
               <ExternalLink className="h-4 w-4" />
               Voir le site web
             </a>
+            <ThemeToggle ariaLabel="Changer le thème" />
             <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full transition ${
+              onClick={() => setShowPasswordModal(true)}
+              className={`inline-flex items-center gap-2 rounded-full border bg-transparent px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
                 theme === "dark"
-                  ? "text-white/70 hover:text-white hover:bg-white/10"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  ? "text-white border-white/20 hover:bg-white/10 focus-visible:outline-white"
+                  : "text-slate-700 border-slate-300 hover:bg-slate-100 focus-visible:outline-slate-500"
               }`}
-              aria-label="Changer le thème"
             >
-              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              <Lock className="h-4 w-4" />
+              Modifier le mot de passe
             </button>
-            <Button
+            <button
               onClick={handleLogout}
-              variant="outline"
-              className="flex items-center gap-2"
+              className={`inline-flex items-center gap-2 rounded-full border bg-transparent px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                theme === "dark"
+                  ? "text-white border-white/20 hover:bg-white/10 focus-visible:outline-white"
+                  : "text-slate-700 border-slate-300 hover:bg-slate-100 focus-visible:outline-slate-500"
+              }`}
             >
               <LogOut className="h-4 w-4" />
               Déconnexion
-            </Button>
+            </button>
           </div>
         </div>
       </header>
@@ -1151,6 +1197,31 @@ export default function AdminDashboard() {
               >
                 {editingFooterItem === item.id ? (
                   <div className="space-y-3">
+                    {(item.menu_category_id && item.menu_item_name) && (
+                      <div className={`p-2 rounded border text-sm ${
+                        theme === "dark"
+                          ? "border-green-500/50 bg-green-500/10 text-green-400"
+                          : "border-green-500 bg-green-50 text-green-700"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span>✓ Lié à un élément du menu: {item.menu_item_name}</span>
+                          <Button
+                            onClick={() => {
+                              setFooterItems(footerItems.map(i => i.id === item.id ? {
+                                ...i,
+                                menu_category_id: undefined,
+                                menu_item_name: undefined,
+                                link: "",
+                              } : i));
+                            }}
+                            variant="outline"
+                            className="h-6 px-2 text-xs"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     <input
                       type="text"
                       value={item.title}
@@ -1184,58 +1255,19 @@ export default function AdminDashboard() {
                           : "border-slate-300 bg-white text-slate-900"
                       }`}
                     />
-                    <input
-                      type="text"
-                      value={item.link || ""}
-                      onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, link: e.target.value} : i))}
-                      placeholder="Lien (optionnel, ex: /menu, https://..., tel:..., mailto:...)"
-                      className={`w-full px-3 py-2 rounded border text-sm ${
-                        theme === "dark"
-                          ? "border-white/10 bg-white/5 text-white"
-                          : "border-slate-300 bg-white text-slate-900"
-                      }`}
-                    />
-                    <div className="border-t pt-3 mt-3">
-                      <label className={`block text-sm font-semibold mb-2 ${
-                        theme === "dark" ? "text-white" : "text-slate-900"
-                      }`}>
-                        Lier à un élément du menu (optionnel)
-                      </label>
-                      <select
-                        value={item.menu_category_id || ""}
-                        onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, menu_category_id: e.target.value, menu_item_name: ""} : i))}
-                        className={`w-full px-3 py-2 rounded border text-sm mb-2 ${
+                    {!(item.menu_category_id && item.menu_item_name) && (
+                      <input
+                        type="text"
+                        value={item.link || ""}
+                        onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, link: e.target.value} : i))}
+                        placeholder="Lien (optionnel, ex: /menu, https://..., tel:..., mailto:...)"
+                        className={`w-full px-3 py-2 rounded border text-sm ${
                           theme === "dark"
                             ? "border-white/10 bg-white/5 text-white"
                             : "border-slate-300 bg-white text-slate-900"
                         }`}
-                      >
-                        <option value="">Sélectionner une catégorie</option>
-                        {menuData.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.label}
-                          </option>
-                        ))}
-                      </select>
-                      {item.menu_category_id && (
-                        <select
-                          value={item.menu_item_name || ""}
-                          onChange={(e) => setFooterItems(footerItems.map(i => i.id === item.id ? {...i, menu_item_name: e.target.value} : i))}
-                          className={`w-full px-3 py-2 rounded border text-sm ${
-                            theme === "dark"
-                              ? "border-white/10 bg-white/5 text-white"
-                              : "border-slate-300 bg-white text-slate-900"
-                          }`}
-                        >
-                          <option value="">Sélectionner un élément</option>
-                          {menuData.find(cat => cat.id === item.menu_category_id)?.items?.map((menuItem) => (
-                            <option key={menuItem.name} value={menuItem.name}>
-                              {menuItem.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
+                      />
+                    )}
                     <div className="flex items-center gap-2">
                       <label className={`text-sm flex items-center gap-2 ${
                         theme === "dark" ? "text-white/90" : "text-slate-700"
@@ -1299,7 +1331,13 @@ export default function AdminDashboard() {
                             {item.description}
                           </p>
                         )}
-                        {item.link && (
+                        {item.menu_category_id && item.menu_item_name ? (
+                          <p className={`text-xs ${
+                            theme === "dark" ? "text-green-400" : "text-green-600"
+                          }`}>
+                            ✓ Lié au menu: {item.menu_item_name}
+                          </p>
+                        ) : item.link && (
                           <p className={`text-xs ${
                             theme === "dark" ? "text-white/50" : "text-slate-500"
                           }`}>
@@ -1358,131 +1396,139 @@ export default function AdminDashboard() {
             }`}>
               Ajouter un élément
             </h3>
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={newFooterItem.title}
-                onChange={(e) => setNewFooterItem({...newFooterItem, title: e.target.value})}
-                placeholder="Titre *"
-                className={`w-full px-3 py-2 rounded border text-sm ${
-                  theme === "dark"
-                    ? "border-white/10 bg-white/5 text-white"
-                    : "border-slate-300 bg-white text-slate-900"
-                }`}
-              />
-              <textarea
-                value={newFooterItem.description}
-                onChange={(e) => setNewFooterItem({...newFooterItem, description: e.target.value})}
-                placeholder="Description (optionnel)"
-                rows={2}
-                className={`w-full px-3 py-2 rounded border text-sm ${
-                  theme === "dark"
-                    ? "border-white/10 bg-white/5 text-white"
-                    : "border-slate-300 bg-white text-slate-900"
-                }`}
-              />
-              <input
-                type="text"
-                value={newFooterItem.icon}
-                onChange={(e) => setNewFooterItem({...newFooterItem, icon: e.target.value})}
-                placeholder="Icône (emoji, ex: 🍟, 📞, 📍)"
-                className={`w-full px-3 py-2 rounded border text-sm ${
-                  theme === "dark"
-                    ? "border-white/10 bg-white/5 text-white"
-                    : "border-slate-300 bg-white text-slate-900"
-                }`}
-              />
-              <input
-                type="text"
-                value={newFooterItem.link}
-                onChange={(e) => setNewFooterItem({...newFooterItem, link: e.target.value})}
-                placeholder="Lien (optionnel, ex: /menu, https://..., tel:+32..., mailto:...)"
-                className={`w-full px-3 py-2 rounded border text-sm ${
-                  theme === "dark"
-                    ? "border-white/10 bg-white/5 text-white"
-                    : "border-slate-300 bg-white text-slate-900"
-                }`}
-              />
-              <div className="border-t pt-3 mt-3">
-                <label className={`block text-sm font-semibold mb-2 ${
-                  theme === "dark" ? "text-white" : "text-slate-900"
-                }`}>
-                  Lier à un élément du menu (optionnel)
-                </label>
-                <select
-                  value={newFooterItem.menu_category_id || ""}
-                  onChange={(e) => setNewFooterItem({...newFooterItem, menu_category_id: e.target.value, menu_item_name: ""})}
-                  className={`w-full px-3 py-2 rounded border text-sm mb-2 ${
+            <Button
+              onClick={() => {
+                setShowMenuSelectorDialog(true);
+                setSelectedCategory(null);
+              }}
+              className="bg-green-600 hover:bg-green-700 mb-3 w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter un élément du menu
+            </Button>
+            {(newFooterItem.title || newFooterItem.menu_category_id) && (
+              <div className="space-y-3 mt-3">
+                {newFooterItem.menu_category_id && newFooterItem.menu_item_name && (
+                  <div className={`p-2 rounded border text-sm ${
+                    theme === "dark"
+                      ? "border-green-500/50 bg-green-500/10 text-green-400"
+                      : "border-green-500 bg-green-50 text-green-700"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span>✓ Lié à un élément du menu</span>
+                      <Button
+                        onClick={() => {
+                          setNewFooterItem({
+                            ...newFooterItem,
+                            menu_category_id: "",
+                            menu_item_name: "",
+                            link: "",
+                          });
+                        }}
+                        variant="outline"
+                        className="h-6 px-2 text-xs"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={newFooterItem.title}
+                  onChange={(e) => setNewFooterItem({...newFooterItem, title: e.target.value})}
+                  placeholder="Titre *"
+                  className={`w-full px-3 py-2 rounded border text-sm ${
                     theme === "dark"
                       ? "border-white/10 bg-white/5 text-white"
                       : "border-slate-300 bg-white text-slate-900"
                   }`}
-                >
-                  <option value="">Sélectionner une catégorie</option>
-                  {menuData.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-                {newFooterItem.menu_category_id && (
-                  <select
-                    value={newFooterItem.menu_item_name || ""}
-                    onChange={(e) => setNewFooterItem({...newFooterItem, menu_item_name: e.target.value})}
+                />
+                <textarea
+                  value={newFooterItem.description}
+                  onChange={(e) => setNewFooterItem({...newFooterItem, description: e.target.value})}
+                  placeholder="Description (optionnel)"
+                  rows={2}
+                  className={`w-full px-3 py-2 rounded border text-sm ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5 text-white"
+                      : "border-slate-300 bg-white text-slate-900"
+                  }`}
+                />
+                <input
+                  type="text"
+                  value={newFooterItem.icon}
+                  onChange={(e) => setNewFooterItem({...newFooterItem, icon: e.target.value})}
+                  placeholder="Icône (emoji, ex: 🍟, 📞, 📍)"
+                  className={`w-full px-3 py-2 rounded border text-sm ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5 text-white"
+                      : "border-slate-300 bg-white text-slate-900"
+                  }`}
+                />
+                {!newFooterItem.menu_category_id && (
+                  <input
+                    type="text"
+                    value={newFooterItem.link}
+                    onChange={(e) => setNewFooterItem({...newFooterItem, link: e.target.value})}
+                    placeholder="Lien (optionnel, ex: /menu, https://..., tel:+32..., mailto:...)"
                     className={`w-full px-3 py-2 rounded border text-sm ${
                       theme === "dark"
                         ? "border-white/10 bg-white/5 text-white"
                         : "border-slate-300 bg-white text-slate-900"
                     }`}
-                  >
-                    <option value="">Sélectionner un élément</option>
-                    {menuData.find(cat => cat.id === newFooterItem.menu_category_id)?.items?.map((menuItem) => (
-                      <option key={menuItem.name} value={menuItem.name}>
-                        {menuItem.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <label className={`text-sm flex items-center gap-2 ${
-                  theme === "dark" ? "text-white/90" : "text-slate-700"
-                }`}>
-                  <input
-                    type="checkbox"
-                    checked={newFooterItem.visible}
-                    onChange={(e) => setNewFooterItem({...newFooterItem, visible: e.target.checked})}
-                    className="rounded"
                   />
-                  Visible
-                </label>
+                )}
+                <div className="flex items-center gap-2">
+                  <label className={`text-sm flex items-center gap-2 ${
+                    theme === "dark" ? "text-white/90" : "text-slate-700"
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={newFooterItem.visible}
+                      onChange={(e) => setNewFooterItem({...newFooterItem, visible: e.target.checked})}
+                      className="rounded"
+                    />
+                    Visible
+                  </label>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={async () => {
+                      if (!newFooterItem.title.trim()) {
+                        alert("Le titre est requis");
+                        return;
+                      }
+                      const response = await fetch("/api/footer", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify(newFooterItem),
+                      });
+                      if (response.ok) {
+                        setNewFooterItem({ title: "", description: "", icon: "", link: "", menu_category_id: "", menu_item_name: "", visible: true });
+                        await loadFooterItems();
+                      } else {
+                        const error = await response.json().catch(() => ({}));
+                        alert(error.error || "Erreur lors de l'ajout");
+                      }
+                    }}
+                    className="bg-green-600 hover:bg-green-700 flex-1"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setNewFooterItem({ title: "", description: "", icon: "", link: "", menu_category_id: "", menu_item_name: "", visible: true });
+                    }}
+                    variant="outline"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <Button
-                onClick={async () => {
-                  if (!newFooterItem.title.trim()) {
-                    alert("Le titre est requis");
-                    return;
-                  }
-                  const response = await fetch("/api/footer", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify(newFooterItem),
-                  });
-                  if (response.ok) {
-                    setNewFooterItem({ title: "", description: "", icon: "", link: "", menu_item_name: "", menu_category_id: "", visible: true });
-                    await loadFooterItems();
-                  } else {
-                    const error = await response.json().catch(() => ({}));
-                    alert(error.error || "Erreur lors de l'ajout");
-                  }
-                }}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter
-              </Button>
-            </div>
+            )}
           </div>
         </div>
 
@@ -1856,18 +1902,26 @@ export default function AdminDashboard() {
                                     }
                                   }}
                                   variant="outline"
-                                  className="text-sm px-3 py-2"
+                                  className={`text-sm px-3 py-2 ${
+                                    theme === "dark" 
+                                      ? "border-white/20 text-white hover:bg-white/10" 
+                                      : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                                  }`}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   onClick={() => {
-                                    if (item.id !== undefined) {
-                                      handleDeleteItem(item.categoryId, item.id, item.name);
+                                    if (item.id != null && typeof item.id === 'number' && confirm(`Êtes-vous sûr de vouloir supprimer "${item.name}" ?`)) {
+                                      handleDeleteItem(item.categoryId, item.id);
                                     }
                                   }}
                                   variant="outline"
-                                  className="text-red-500 hover:text-red-700 text-sm px-3 py-2"
+                                  className={`text-sm px-3 py-2 ${
+                                    theme === "dark"
+                                      ? "text-red-400 hover:text-red-300 border-white/20 hover:bg-red-500/10"
+                                      : "text-red-500 hover:text-red-700 border-slate-300 hover:bg-red-50"
+                                  }`}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -1905,9 +1959,9 @@ export default function AdminDashboard() {
                   handleUpdateCategory={handleUpdateCategory}
                   handleCancelEditCategory={handleCancelEditCategory}
                   handleStartEditCategory={handleStartEditCategory}
+                  handleDeleteCategory={handleDeleteCategory}
                   handleSaveItem={handleSaveItem}
                   handleDeleteItem={handleDeleteItem}
-                  handleDeleteCategory={handleDeleteCategory}
                   isExpanded={expandedCategories.has(category.id)}
                   onToggleExpand={() => {
                     setExpandedCategories(prev => {
@@ -1921,11 +1975,8 @@ export default function AdminDashboard() {
                     });
                   }}
                   formatPrice={formatPrice}
-                  onQuickModify={(item, categoryId, itemId) => {
-                    setQuickModifyItem({ item, categoryId, itemId });
-                    setQuickModifyData({ ...item });
-                    setQuickModifyImagePreview(null);
-                  }}
+                  searchQuery={searchQuery}
+                  filterCategoryItems={filterCategoryItems}
                 />
               ))
             ) : (
@@ -1945,330 +1996,238 @@ export default function AdminDashboard() {
         </DndContext>
       </main>
 
-      {/* Quick Modify Item Dialog */}
-      {quickModifyItem && quickModifyData && (
-        <Dialog
-          isOpen={!!quickModifyItem}
-          onClose={() => {
-            setQuickModifyItem(null);
-            setQuickModifyData(null);
-            setQuickModifyImagePreview(null);
-          }}
-          title={quickModifyData.name || "Modifier l'article"}
-        >
-          <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
-            {/* Image */}
-            <div className="relative w-full h-64 sm:h-96 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 shadow-lg">
-              {(quickModifyImagePreview || quickModifyData.image) && (
-                <img
-                  src={quickModifyImagePreview || quickModifyData.image}
-                  alt={quickModifyData.name || "Image de l'article"}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              )}
-              {!quickModifyImagePreview && !quickModifyData.image && (
-                <div className={`w-full h-full flex items-center justify-center ${
-                  theme === "dark" ? "text-white/50" : "text-slate-400"
-                }`}>
-                  Aucune image
-                </div>
-              )}
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-xl ${
+            theme === "dark"
+              ? "border-white/10 bg-slate-900"
+              : "border-slate-200 bg-white"
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`text-2xl font-bold ${
+                theme === "dark" ? "text-white" : "text-slate-900"
+              }`}>
+                Modifier le mot de passe
+              </h2>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setPasswordError("");
+                }}
+                className={`p-2 rounded-lg transition ${
+                  theme === "dark"
+                    ? "text-white/70 hover:text-white hover:bg-white/10"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            
-            <div className="space-y-4 sm:space-y-5">
-              {/* Name */}
+
+            {passwordError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+                {passwordError}
+              </div>
+            )}
+
+            <div className="space-y-4">
               <div>
-                <label className={`block text-sm sm:text-base font-semibold mb-2 ${
-                  theme === "dark" ? "text-white" : "text-slate-900"
+                <label className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-white" : "text-slate-700"
                 }`}>
-                  Nom de l'article *
+                  Mot de passe actuel
                 </label>
                 <input
-                  type="text"
-                  value={quickModifyData.name || ""}
-                  onChange={(e) => setQuickModifyData({ ...quickModifyData, name: e.target.value })}
-                  className={`w-full px-4 py-3 rounded-xl border ${
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className={`w-full px-4 py-2 rounded-lg border ${
                     theme === "dark"
                       ? "border-white/10 bg-white/5 text-white placeholder-white/50"
                       : "border-slate-300 bg-white text-slate-900"
-                  } focus:outline-none focus:ring-2 focus:ring-green-500 text-base`}
-                  placeholder="Ex: Roi Dagobert"
+                  } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  placeholder="Entrez votre mot de passe actuel"
+                  disabled={changingPassword}
                 />
               </div>
 
-              {/* Description */}
               <div>
-                <label className={`block text-sm sm:text-base font-semibold mb-2 ${
-                  theme === "dark" ? "text-white" : "text-slate-900"
+                <label className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-white" : "text-slate-700"
                 }`}>
-                  Description
+                  Nouveau mot de passe
                 </label>
-                <textarea
-                  value={quickModifyData.description || ""}
-                  onChange={(e) => setQuickModifyData({ ...quickModifyData, description: e.target.value })}
-                  className={`w-full px-4 py-3 rounded-xl border ${
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className={`w-full px-4 py-2 rounded-lg border ${
                     theme === "dark"
                       ? "border-white/10 bg-white/5 text-white placeholder-white/50"
                       : "border-slate-300 bg-white text-slate-900"
-                  } focus:outline-none focus:ring-2 focus:ring-green-500 resize-y text-base`}
-                  placeholder="Description détaillée de l'article..."
-                  rows={4}
+                  } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  placeholder="Entrez votre nouveau mot de passe"
+                  disabled={changingPassword}
                 />
               </div>
 
-              {/* Price */}
               <div>
-                <label className={`block text-sm sm:text-base font-semibold mb-2 ${
-                  theme === "dark" ? "text-white" : "text-slate-900"
+                <label className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-white" : "text-slate-700"
                 }`}>
-                  Prix *
+                  Confirmer le nouveau mot de passe
                 </label>
                 <input
-                  type="text"
-                  value={quickModifyData.price || ""}
-                  onChange={(e) => {
-                    const formatted = formatPriceInput(e.target.value);
-                    setQuickModifyData({ ...quickModifyData, price: formatted });
-                  }}
-                  onBlur={(e) => {
-                    let value = e.target.value.trim();
-                    if (value && !value.includes('€')) {
-                      value = value + ' €';
-                      setQuickModifyData({ ...quickModifyData, price: value });
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`w-full px-4 py-2 rounded-lg border ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5 text-white placeholder-white/50"
+                      : "border-slate-300 bg-white text-slate-900"
+                  } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  placeholder="Confirmez votre nouveau mot de passe"
+                  disabled={changingPassword}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !changingPassword) {
+                      handleChangePassword();
                     }
                   }}
-                  className={`w-full px-4 py-3 rounded-xl border ${
-                    theme === "dark"
-                      ? "border-white/10 bg-white/5 text-white placeholder-white/50"
-                      : "border-slate-300 bg-white text-slate-900"
-                  } focus:outline-none focus:ring-2 focus:ring-green-500 text-base`}
-                  placeholder="Ex: 5,50 - 6,50 €"
                 />
               </div>
 
-              {/* Image Upload */}
-              <div>
-                <label className={`block text-sm sm:text-base font-semibold mb-2 ${
-                  theme === "dark" ? "text-white" : "text-slate-900"
-                }`}>
-                  Image
-                </label>
-                <div className="space-y-3">
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setUploadingQuickModifyImage(true);
-                        try {
-                          // Create preview
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setQuickModifyImagePreview(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
-
-                          // Upload file
-                          const formData = new FormData();
-                          formData.append("file", file);
-                          
-                          const response = await fetch("/api/upload", {
-                            method: "POST",
-                            credentials: "include",
-                            body: formData,
-                          });
-
-                          if (response.ok) {
-                            const data = await response.json();
-                            setQuickModifyData({ ...quickModifyData, image: data.url });
-                            setQuickModifyImagePreview(data.url);
-                          } else {
-                            const error = await response.json();
-                            alert(error.error || "Erreur lors du téléchargement de l'image");
-                          }
-                        } catch (error) {
-                          console.error("Upload error:", error);
-                          alert("Erreur lors du téléchargement de l'image");
-                        } finally {
-                          setUploadingQuickModifyImage(false);
-                        }
-                      }
-                    }}
-                    className={`w-full px-4 py-2 rounded-xl border ${
-                      theme === "dark"
-                        ? "border-white/10 bg-white/5 text-white"
-                        : "border-slate-300 bg-white text-slate-900"
-                    } focus:outline-none focus:ring-2 focus:ring-green-500`}
-                    disabled={uploadingQuickModifyImage}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Ou entrez une URL d'image"
-                    value={quickModifyData.image || ""}
-                    onChange={(e) => {
-                      setQuickModifyData({ ...quickModifyData, image: e.target.value });
-                      setQuickModifyImagePreview(null);
-                    }}
-                    className={`w-full px-4 py-3 rounded-xl border ${
-                      theme === "dark"
-                        ? "border-white/10 bg-white/5 text-white placeholder-white/50"
-                        : "border-slate-300 bg-white text-slate-900"
-                    } focus:outline-none focus:ring-2 focus:ring-green-500 text-base`}
-                  />
-                </div>
-              </div>
-
-              {/* Action Buttons */}
               <div className="flex gap-3 pt-2">
                 <Button
-                  onClick={async () => {
-                    if (!quickModifyData.name || !quickModifyData.price) {
-                      alert("Le nom et le prix sont requis");
-                      return;
-                    }
-                    await handleSaveItem(quickModifyItem.categoryId, quickModifyItem.itemId, quickModifyData);
-                    setQuickModifyItem(null);
-                    setQuickModifyData(null);
-                    setQuickModifyImagePreview(null);
-                  }}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-base font-semibold"
+                  onClick={handleChangePassword}
+                  disabled={changingPassword}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  Enregistrer
+                  {changingPassword ? "Modification..." : "Modifier le mot de passe"}
                 </Button>
                 <Button
                   onClick={() => {
-                    setQuickModifyItem(null);
-                    setQuickModifyData(null);
-                    setQuickModifyImagePreview(null);
+                    setShowPasswordModal(false);
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setPasswordError("");
                   }}
                   variant="outline"
-                  className="px-6 py-3 text-base"
+                  disabled={changingPassword}
+                  className="flex-1"
                 >
-                  <X className="h-4 w-4 mr-2" />
                   Annuler
                 </Button>
               </div>
             </div>
           </div>
-        </Dialog>
+        </div>
       )}
 
-      {/* Change Password Dialog */}
+      {/* Menu Item Selector Dialog */}
       <Dialog
-        isOpen={showChangePasswordDialog}
+        isOpen={showMenuSelectorDialog}
         onClose={() => {
-          setShowChangePasswordDialog(false);
-          setCurrentPassword("");
-          setNewPassword("");
-          setConfirmPassword("");
-          setPasswordError("");
+          setShowMenuSelectorDialog(false);
+          setSelectedCategory(null);
         }}
-        title="Changer le mot de passe"
+        title={selectedCategory ? "Sélectionner un élément" : "Sélectionner une catégorie"}
       >
         <div className="space-y-4">
-          {passwordError && (
-            <div className={`p-3 rounded-lg border ${
-              theme === "dark"
-                ? "bg-red-500/10 border-red-500/20 text-red-400"
-                : "bg-red-50 border-red-200 text-red-600"
-            }`}>
-              {passwordError}
+          {!selectedCategory ? (
+            // Stage 1: Category Selection
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {menuData.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`p-4 rounded-lg border text-left transition-all hover:scale-105 ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20"
+                      : "border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300"
+                  }`}
+                >
+                  <h3 className={`font-semibold mb-1 ${
+                    theme === "dark" ? "text-white" : "text-slate-900"
+                  }`}>
+                    {category.label}
+                  </h3>
+                  <p className={`text-sm ${
+                    theme === "dark" ? "text-white/70" : "text-slate-600"
+                  }`}>
+                    {category.items?.length || 0} élément(s)
+                  </p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            // Stage 2: Item Selection
+            <div className="space-y-3">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`flex items-center gap-2 text-sm mb-4 ${
+                  theme === "dark" ? "text-white/70 hover:text-white" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <ChevronUp className="h-4 w-4" />
+                Retour aux catégories
+              </button>
+              <div className="max-h-[60vh] overflow-y-auto space-y-2">
+                {selectedCategory.items?.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      // Auto-fill footer item form
+                      setNewFooterItem({
+                        title: item.name,
+                        description: item.description || "",
+                        icon: "",
+                        link: "",
+                        menu_category_id: selectedCategory.id,
+                        menu_item_name: item.name,
+                        visible: true,
+                      });
+                      setShowMenuSelectorDialog(false);
+                      setSelectedCategory(null);
+                    }}
+                    className={`w-full p-4 rounded-lg border text-left transition-all hover:scale-[1.02] ${
+                      theme === "dark"
+                        ? "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20"
+                        : "border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <h4 className={`font-semibold mb-1 ${
+                          theme === "dark" ? "text-white" : "text-slate-900"
+                        }`}>
+                          {item.name}
+                        </h4>
+                        {item.description && (
+                          <p className={`text-sm mb-2 line-clamp-2 ${
+                            theme === "dark" ? "text-white/70" : "text-slate-600"
+                          }`}>
+                            {item.description}
+                          </p>
+                        )}
+                        {item.price && (
+                          <p className={`text-sm font-semibold ${
+                            theme === "dark" ? "text-amber-300" : "text-amber-600"
+                          }`}>
+                            {formatPrice(item.price)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-
-          <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-white" : "text-slate-700"
-              }`}
-            >
-              Mot de passe actuel
-            </label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className={`w-full px-4 py-2 rounded-lg border ${
-                theme === "dark"
-                  ? "border-white/10 bg-white/5 text-white placeholder-white/50"
-                  : "border-slate-300 bg-white text-slate-900"
-              } focus:outline-none focus:ring-2 focus:ring-green-500`}
-              placeholder="Entrez votre mot de passe actuel"
-              disabled={changingPassword}
-            />
-          </div>
-
-          <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-white" : "text-slate-700"
-              }`}
-            >
-              Nouveau mot de passe
-            </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className={`w-full px-4 py-2 rounded-lg border ${
-                theme === "dark"
-                  ? "border-white/10 bg-white/5 text-white placeholder-white/50"
-                  : "border-slate-300 bg-white text-slate-900"
-              } focus:outline-none focus:ring-2 focus:ring-green-500`}
-              placeholder="Entrez votre nouveau mot de passe (min. 3 caractères)"
-              disabled={changingPassword}
-            />
-          </div>
-
-          <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-white" : "text-slate-700"
-              }`}
-            >
-              Confirmer le nouveau mot de passe
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className={`w-full px-4 py-2 rounded-lg border ${
-                theme === "dark"
-                  ? "border-white/10 bg-white/5 text-white placeholder-white/50"
-                  : "border-slate-300 bg-white text-slate-900"
-              } focus:outline-none focus:ring-2 focus:ring-green-500`}
-              placeholder="Confirmez votre nouveau mot de passe"
-              disabled={changingPassword}
-            />
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button
-              onClick={handleChangePassword}
-              disabled={changingPassword}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            >
-              {changingPassword ? "Changement en cours..." : "Changer le mot de passe"}
-            </Button>
-            <Button
-              onClick={() => {
-                setShowChangePasswordDialog(false);
-                setCurrentPassword("");
-                setNewPassword("");
-                setConfirmPassword("");
-                setPasswordError("");
-              }}
-              variant="outline"
-              disabled={changingPassword}
-            >
-              Annuler
-            </Button>
-          </div>
         </div>
       </Dialog>
     </div>

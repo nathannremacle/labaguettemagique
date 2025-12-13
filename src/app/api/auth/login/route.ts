@@ -32,9 +32,18 @@ export async function POST(request: NextRequest) {
     const result = authenticate(username, password);
 
     if (!result.success) {
+      console.log("[Login API] Authentication failed:", result.error);
       return NextResponse.json(
         { error: result.error || "Invalid credentials" },
         { status: 401 }
+      );
+    }
+
+    if (!result.sessionId) {
+      console.error("[Login API] Authentication succeeded but no sessionId returned");
+      return NextResponse.json(
+        { error: "Failed to create session" },
+        { status: 500 }
       );
     }
 
@@ -45,13 +54,25 @@ export async function POST(request: NextRequest) {
     });
 
     // Set session cookie
-    response.cookies.set("admin_session", result.sessionId!, {
+    response.cookies.set("admin_session", result.sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 24 * 60 * 60, // 24 hours
       path: "/",
     });
+
+    console.log("[Login API] Session created successfully for user:", username);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[Login API] Cookie settings:", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+        maxAge: "24 hours",
+        sessionIdLength: result.sessionId.length,
+      });
+    }
 
     return response;
   } catch (error) {

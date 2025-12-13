@@ -237,3 +237,6 @@ This authentication system provides a simple, straightforward way to protect you
 
 For questions or issues, refer to the code in `src/lib/auth.ts` and `src/lib/middleware.ts`.
 
+
+
+

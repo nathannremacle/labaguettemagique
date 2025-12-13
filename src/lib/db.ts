@@ -80,8 +80,6 @@ function initializeSchema(database: Database.Database) {
       description TEXT,
       icon TEXT,
       link TEXT,
-      menu_item_name TEXT,
-      menu_category_id TEXT,
       "order" INTEGER NOT NULL DEFAULT 0,
       visible INTEGER NOT NULL DEFAULT 1,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -89,42 +87,14 @@ function initializeSchema(database: Database.Database) {
     )
   `);
 
-  // Admin users table
+  // Admin credentials table
   database.exec(`
-    CREATE TABLE IF NOT EXISTS admin_users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CREATE TABLE IF NOT EXISTS admin_credentials (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      password_hash TEXT NOT NULL,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  
-  // Add new columns if they don't exist (migration)
-  try {
-    database.exec(`
-      ALTER TABLE footer_items ADD COLUMN menu_item_name TEXT;
-    `);
-  } catch (e) {
-    // Column already exists, ignore
-  }
-  
-  try {
-    database.exec(`
-      ALTER TABLE footer_items ADD COLUMN menu_category_id TEXT;
-    `);
-  } catch (e) {
-    // Column already exists, ignore
-  }
-
-  // Initialize default admin user if none exists
-  const existingAdmin = database.prepare('SELECT COUNT(*) as count FROM admin_users').get() as { count: number };
-  if (existingAdmin.count === 0) {
-    database.prepare(`
-      INSERT INTO admin_users (username, password)
-      VALUES (?, ?)
-    `).run('admin', 'password');
-  }
 
   // Create indexes
   database.exec(`
