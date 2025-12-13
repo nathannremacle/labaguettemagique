@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         .map((file) => `/images/placeholders/${file}`);
       images.push(...placeholderImages);
     } catch (error) {
-      // Directory doesn't exist, skip
+      console.error("Error reading placeholders directory:", error);
     }
 
     // Read uploaded menu item images
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         .map((file) => `/images/menu-items/${file}`);
       images.push(...menuItemImages);
     } catch (error) {
-      // Directory doesn't exist, skip
+      console.error("Error reading placeholders directory:", error);
     }
 
     // Sort images alphabetically

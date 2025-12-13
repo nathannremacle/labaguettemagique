@@ -73,7 +73,7 @@ Login endpoint that authenticates the user.
 ```json
 {
   "username": "admin",
-  "password": "password"
+  "password": "your-password"
 }
 ```
 

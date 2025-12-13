@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/middleware";
 import { writeFile, mkdir } from "fs/promises";
+import { access } from "fs/promises";
 import path from "path";
-import { existsSync } from "fs";
 import sharp from "sharp";
 import { getDatabase } from "@/lib/db";
+import { validateFile, validateFilePath } from "./validation";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "images", "menu-items");
 const THUMBNAILS_DIR = path.join(process.cwd(), "public", "images", "menu-items", "thumbnails");
 
 // Ensure upload directory exists
 async function ensureUploadDir() {
-  if (!existsSync(UPLOAD_DIR)) {
+  try {
+    await access(UPLOAD_DIR);
+  } catch {
     await mkdir(UPLOAD_DIR, { recursive: true });
   }
-  if (!existsSync(THUMBNAILS_DIR)) {
+  try {
+    await access(THUMBNAILS_DIR);
+  } catch {
     await mkdir(THUMBNAILS_DIR, { recursive: true });
   }
 }
@@ -29,24 +34,11 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
-
-    // Validate file type
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
+    // Validate file
+    const fileValidation = validateFile(file);
+    if (!fileValidation.valid) {
       return NextResponse.json(
-        { error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." },
-        { status: 400 }
-      );
-    }
-
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: "File size too large. Maximum size is 5MB." },
+        { error: fileValidation.error },
         { status: 400 }
       );
     }
@@ -76,11 +68,10 @@ export async function POST(request: NextRequest) {
     const optimizedPath = path.join(UPLOAD_DIR, optimizedFilename);
     
     // Validate path to prevent directory traversal attacks
-    const resolvedPath = path.resolve(optimizedPath);
-    const resolvedUploadDir = path.resolve(UPLOAD_DIR);
-    if (!resolvedPath.startsWith(resolvedUploadDir)) {
+    const pathValidation = validateFilePath(optimizedPath, UPLOAD_DIR);
+    if (!pathValidation.valid) {
       return NextResponse.json(
-        { error: "Invalid file path" },
+        { error: pathValidation.error },
         { status: 400 }
       );
     }

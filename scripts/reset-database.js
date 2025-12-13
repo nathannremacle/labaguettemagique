@@ -1,5 +1,6 @@
 const Database = require('better-sqlite3');
-const fs = require('fs');
+const fs = require('fs').promises;
+const { access } = require('fs/promises');
 const path = require('path');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'menu.db');
@@ -7,7 +8,7 @@ const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images', 'menu-items');
 const THUMBNAILS_DIR = path.join(__dirname, '..', 'public', 'images', 'menu-items', 'thumbnails');
 
 // Main function to reset database
-function resetDatabase() {
+async function resetDatabase() {
   const db = new Database(DB_PATH);
   
   try {
@@ -45,42 +46,48 @@ function resetDatabase() {
 }
 
 // Function to delete uploaded images
-function deleteUploadedImages() {
+async function deleteUploadedImages() {
   try {
     console.log('\nDeleting uploaded images...');
     
     // Delete thumbnails
-    if (fs.existsSync(THUMBNAILS_DIR)) {
-      const thumbnailFiles = fs.readdirSync(THUMBNAILS_DIR);
+    try {
+      await fs.access(THUMBNAILS_DIR);
+      const thumbnailFiles = await fs.readdir(THUMBNAILS_DIR);
       let deletedCount = 0;
-      thumbnailFiles.forEach(file => {
+      for (const file of thumbnailFiles) {
         if (file !== '.gitkeep') {
           try {
-            fs.unlinkSync(path.join(THUMBNAILS_DIR, file));
+            await fs.unlink(path.join(THUMBNAILS_DIR, file));
             deletedCount++;
           } catch (err) {
             console.warn(`  Warning: Could not delete ${file}:`, err.message);
           }
         }
-      });
+      }
       console.log(`  - Deleted ${deletedCount} thumbnail(s)`);
+    } catch {
+      // Directory doesn't exist, skip
     }
     
     // Delete main images
-    if (fs.existsSync(IMAGES_DIR)) {
-      const imageFiles = fs.readdirSync(IMAGES_DIR);
+    try {
+      await fs.access(IMAGES_DIR);
+      const imageFiles = await fs.readdir(IMAGES_DIR);
       let deletedCount = 0;
-      imageFiles.forEach(file => {
+      for (const file of imageFiles) {
         if (file !== '.gitkeep' && file !== 'thumbnails') {
           try {
-            fs.unlinkSync(path.join(IMAGES_DIR, file));
+            await fs.unlink(path.join(IMAGES_DIR, file));
             deletedCount++;
           } catch (err) {
             console.warn(`  Warning: Could not delete ${file}:`, err.message);
           }
         }
-      });
+      }
       console.log(`  - Deleted ${deletedCount} image(s)`);
+    } catch {
+      // Directory doesn't exist, skip
     }
     
     console.log('✓ Image cleanup completed!');
@@ -93,7 +100,9 @@ function deleteUploadedImages() {
 
 // Run the reset
 console.log('=== Database and Image Reset ===\n');
-resetDatabase();
-deleteUploadedImages();
+(async () => {
+  await resetDatabase();
+  await deleteUploadedImages();
+})();
 console.log('\n=== Reset Complete ===');
 

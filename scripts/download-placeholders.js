@@ -1,12 +1,18 @@
 const https = require('https');
 const fs = require('fs');
+const fsPromises = require('fs').promises;
+const { access } = require('fs/promises');
 const path = require('path');
 
 // Create placeholders directory
 const placeholdersDir = path.join(process.cwd(), 'public', 'images', 'placeholders');
-if (!fs.existsSync(placeholdersDir)) {
-  fs.mkdirSync(placeholdersDir, { recursive: true });
-}
+(async () => {
+  try {
+    await access(placeholdersDir);
+  } catch {
+    await fsPromises.mkdir(placeholdersDir, { recursive: true });
+  }
+})();
 
 // Category-based image seeds for consistent images per category
 const categoryImageSeeds = {

@@ -54,19 +54,20 @@ export async function POST(request: NextRequest) {
     });
 
     // Set session cookie
+    const isProduction = (process.env.NODE_ENV as string) === "production";
     response.cookies.set("admin_session", result.sessionId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
       sameSite: "strict",
       maxAge: 24 * 60 * 60, // 24 hours
       path: "/",
     });
 
     console.log("[Login API] Session created successfully for user:", username);
-    if (process.env.NODE_ENV !== "production") {
+    if (!isProduction) {
       console.log("[Login API] Cookie settings:", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction,
         sameSite: "strict",
         path: "/",
         maxAge: "24 hours",

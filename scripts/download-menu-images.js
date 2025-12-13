@@ -3,7 +3,7 @@ const cheerio = require('cheerio');
 const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs').promises;
-const { existsSync } = require('fs');
+const { access } = require('fs/promises');
 const Database = require('better-sqlite3');
 
 // Configuration
@@ -15,12 +15,30 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Ensure directories exist
 async function ensureDirectories() {
-  if (!existsSync(UPLOAD_DIR)) {
+  try {
+    await fs.access(UPLOAD_DIR);
+  } catch {
     await fs.mkdir(UPLOAD_DIR, { recursive: true });
   }
-  if (!existsSync(THUMBNAILS_DIR)) {
+  try {
+    await fs.access(THUMBNAILS_DIR);
+  } catch {
     await fs.mkdir(THUMBNAILS_DIR, { recursive: true });
   }
+}
+
+// Helper function to extract and validate image URLs
+function extractAndValidateUrl(match) {
+  const url = match.replace(/^["']|["']$/g, '').trim();
+  if (!url) return null;
+  
+  // Early return for invalid URLs
+  if (url.includes('google.com')) return null;
+  if (url.includes('gstatic.com')) return null;
+  if (url.includes('googleusercontent.com')) return null;
+  if (url.includes('data:image')) return null;
+  
+  return url;
 }
 
 // Search for images using Google Images
@@ -59,10 +77,8 @@ async function searchGoogleImages(query) {
           const matches = content.match(pattern);
           if (matches) {
             matches.forEach(match => {
-              // Extract clean URL
-              const url = match.replace(/^["']|["']$/g, '').trim();
-              if (url && !url.includes('google.com') && !url.includes('gstatic.com') && 
-                  !url.includes('googleusercontent.com') && !url.includes('data:image')) {
+              const url = extractAndValidateUrl(match);
+              if (url) {
                 imageUrls.add(url);
               }
             });

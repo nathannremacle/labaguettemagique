@@ -84,7 +84,12 @@ function addMenuFooterItems() {
     // Get max order
     const maxOrderStmt = db.prepare("SELECT MAX(\"order\") as max_order FROM footer_items");
     const maxOrderResult = maxOrderStmt.get();
-    let nextOrder = (maxOrderResult?.max_order ?? -1) + 1;
+    let nextOrder;
+    if (maxOrderResult?.max_order != null) {
+      nextOrder = maxOrderResult.max_order + 1;
+    } else {
+      nextOrder = 0;
+    }
     
     // Check if items already exist
     const checkStmt = db.prepare("SELECT id, title FROM footer_items WHERE title = ?");

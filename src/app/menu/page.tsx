@@ -33,29 +33,33 @@ function formatPrice(price: string | undefined): string {
 }
 
 // Memoized Menu Item Card Component for optimized rendering
-interface MenuItemCardProps {
-  item: MenuItem;
+interface MenuItemCardDisplay {
   index: number;
   activeCategory: string;
   theme: "dark" | "light";
   isHighlighted: boolean;
+}
+
+interface MenuItemCardCallbacks {
   onItemClick: (item: MenuItem) => void;
   onAddToCart: (item: MenuItem, hasSizeOptions: boolean) => void;
   onImagePreload: (url: string, itemKey: string) => void;
   itemRef: (el: HTMLDivElement | null, itemKey: string) => void;
 }
 
+interface MenuItemCardProps {
+  item: MenuItem;
+  display: MenuItemCardDisplay;
+  callbacks: MenuItemCardCallbacks;
+}
+
 const MenuItemCard = memo(function MenuItemCard({
   item,
-  index,
-  activeCategory,
-  theme,
-  isHighlighted,
-  onItemClick,
-  onAddToCart,
-  onImagePreload,
-  itemRef,
+  display,
+  callbacks,
 }: MenuItemCardProps) {
+  const { index, activeCategory, theme, isHighlighted } = display;
+  const { onItemClick, onAddToCart, onImagePreload, itemRef } = callbacks;
   const imageUrl = useMemo(() => item.image || getItemImage(item.name, activeCategory, index), [item.image, item.name, activeCategory, index]);
   const itemKey = useMemo(() => `${activeCategory}-${item.name}`, [activeCategory, item.name]);
   const formattedPrice = useMemo(() => formatPrice(item.price), [item.price]);
@@ -287,20 +291,7 @@ export default function MenuPage() {
           
           // Small delay to ensure category switch and rendering
           setTimeout(() => {
-            // Scroll to item
-            const itemKey = `${category.id}-${item.name}`;
-            const itemElement = itemRefs.current.get(itemKey);
-            if (itemElement) {
-              itemElement.scrollIntoView({ 
-                behavior: "smooth", 
-                block: "center" 
-              });
-              
-              // Highlight the item
-              setHighlightedItem(itemKey);
-              setTimeout(() => setHighlightedItem(null), 2000);
-            }
-            
+            scrollToAndHighlightItem(category, item);
             // Open the item dialog (focus mode)
             setSelectedItem(item);
             setQuantity(1);
@@ -421,6 +412,22 @@ export default function MenuPage() {
     }
   }, [activeCategory, handleAddToCart]);
 
+  // Helper function to scroll to and highlight an item
+  const scrollToAndHighlightItem = useCallback((category: MenuCategory, item: MenuItem) => {
+    const itemKey = `${category.id}-${item.name}`;
+    const itemElement = itemRefs.current.get(itemKey);
+    if (!itemElement) return;
+    
+    itemElement.scrollIntoView({ 
+      behavior: "smooth", 
+      block: "center" 
+    });
+    
+    // Highlight the item
+    setHighlightedItem(itemKey);
+    setTimeout(() => setHighlightedItem(null), 2000);
+  }, []);
+
   const handleItemRef = useCallback((el: HTMLDivElement | null, itemKey: string) => {
     if (el) {
       itemRefs.current.set(itemKey, el);
@@ -526,14 +533,18 @@ export default function MenuPage() {
                     <MenuItemCard
                       key={itemKey}
                       item={item}
-                      index={index}
-                      activeCategory={activeCategory}
-                      theme={theme}
-                      isHighlighted={isHighlighted}
-                      onItemClick={handleItemClick}
-                      onAddToCart={handleItemAddToCart}
-                      onImagePreload={handlePreloadImage}
-                      itemRef={handleItemRef}
+                      display={{
+                        index,
+                        activeCategory,
+                        theme,
+                        isHighlighted,
+                      }}
+                      callbacks={{
+                        onItemClick: handleItemClick,
+                        onAddToCart: handleItemAddToCart,
+                        onImagePreload: handlePreloadImage,
+                        itemRef: handleItemRef,
+                      }}
                     />
                   );
                 })}

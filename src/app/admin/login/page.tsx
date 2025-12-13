@@ -1,64 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAdminLogin } from "./hooks/useAdminLogin";
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const { theme } = useTheme();
+  const login = useAdminLogin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-      console.log("[Login] Response status:", response.status, "Response data:", data);
-
-      if (response.ok) {
-        // Check if authentication was successful
-        if (data.success !== false && !data.error) {
-          // Login successful - cookie is set by the server response
-          // Use window.location.href for a full page reload to ensure cookies are available
-          console.log("[Login] Authentication successful, redirecting to admin dashboard");
-          setLoading(false);
-          // Small delay to ensure cookie is set
-          setTimeout(() => {
-            window.location.href = "/admin";
-          }, 100);
-          return;
-        } else {
-          // Response was ok but authentication failed
-          console.error("[Login] Authentication failed - Error:", data.error || "Invalid credentials");
-          setError(data.error || "Invalid credentials");
-          setLoading(false);
-        }
-      } else {
-        // Login failed with error status
-        console.error("[Login] Authentication failed - Status:", response.status, "Error:", data.error || "Invalid credentials");
-        setError(data.error || "Invalid credentials");
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error("[Login] Network or unexpected error:", err);
-      setError("An error occurred. Please try again.");
-      setLoading(false);
-    }
+    await login.handleLogin();
   };
 
   return (
@@ -92,9 +45,9 @@ export default function AdminLogin() {
           Please sign in to access the admin panel
         </p>
 
-        {error && (
+        {login.error && (
           <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-            {error}
+            {login.error}
           </div>
         )}
 
@@ -109,8 +62,8 @@ export default function AdminLogin() {
             </label>
             <input
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={login.username}
+              onChange={(e) => login.setUsername(e.target.value)}
               required
               className={`w-full px-4 py-2 rounded-lg border ${
                 theme === "dark"
@@ -118,7 +71,7 @@ export default function AdminLogin() {
                   : "border-slate-300 bg-white text-slate-900"
               } focus:outline-none focus:ring-2 focus:ring-green-500`}
               placeholder="Enter username"
-              disabled={loading}
+              disabled={login.loading}
             />
           </div>
 
@@ -132,8 +85,8 @@ export default function AdminLogin() {
             </label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={login.password}
+              onChange={(e) => login.setPassword(e.target.value)}
               required
               className={`w-full px-4 py-2 rounded-lg border ${
                 theme === "dark"
@@ -141,16 +94,16 @@ export default function AdminLogin() {
                   : "border-slate-300 bg-white text-slate-900"
               } focus:outline-none focus:ring-2 focus:ring-green-500`}
               placeholder="Enter password"
-              disabled={loading}
+              disabled={login.loading}
             />
           </div>
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={login.loading}
             className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {login.loading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
       </div>
