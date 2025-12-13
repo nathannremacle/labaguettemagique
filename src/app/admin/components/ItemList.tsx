@@ -3,16 +3,21 @@
 import { MenuItem } from "@/components/MenuSection";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2 } from "lucide-react";
+import { useAlert } from "@/lib/useAlert";
+
+interface ItemListHandlers {
+  formatPrice: (price: string | undefined) => string;
+  handleDeleteItem: (categoryId: string, itemId: number) => void;
+  onEditItem: (categoryId: string, itemId: number) => void;
+}
 
 interface ItemListProps {
   items: MenuItem[];
   theme: string;
   categoryId: string;
   searchQuery: string;
-  formatPrice: (price: string | undefined) => string;
-  handleDeleteItem: (categoryId: string, itemId: number) => void;
   onToggleExpand: () => void;
-  onEditItem: (itemId: number) => void;
+  handlers: ItemListHandlers;
 }
 
 export function ItemList({
@@ -20,11 +25,11 @@ export function ItemList({
   theme,
   categoryId,
   searchQuery,
-  formatPrice,
-  handleDeleteItem,
   onToggleExpand,
-  onEditItem,
+  handlers,
 }: ItemListProps) {
+  const { formatPrice, handleDeleteItem, onEditItem } = handlers;
+  const { showConfirm, AlertComponent } = useAlert();
   if (items.length === 0) {
     return (
       <p className={`text-sm italic ${
@@ -51,18 +56,21 @@ export function ItemList({
             }`}
           >
             <div className="flex items-start gap-4">
-              {item.image && (
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                  <img
-                    src={item.image}
-                    alt={item.name || "Image de l'article"}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
+              <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-700">
+                <img
+                  src={item.image || `/images/placeholders/${categoryId}-${index % 10}.jpg`}
+                  alt={item.name || "Image de l'article"}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (!target.src.includes('/images/placeholders/')) {
+                      target.src = `/images/placeholders/${categoryId}-${index % 10}.jpg`;
+                    } else {
+                      target.style.display = 'none';
+                    }
+                  }}
+                />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -79,7 +87,7 @@ export function ItemList({
                       </p>
                     )}
                     {item.price && (
-                      <p className={`text-sm font-semibold ${
+                      <p className={`text-sm font-semibold text-right ${
                         theme === "dark" ? "text-amber-300" : "text-amber-600"
                       }`}>
                         {formatPrice(item.price)}
@@ -91,10 +99,7 @@ export function ItemList({
                       <>
                         <Button
                           onClick={() => {
-                            onToggleExpand();
-                            setTimeout(() => {
-                              onEditItem(item.id!);
-                            }, 100);
+                            onEditItem(categoryId, item.id!);
                           }}
                           variant="outline"
                           className={`text-sm px-3 py-2 ${
@@ -108,8 +113,13 @@ export function ItemList({
                         </Button>
                         <Button
                           onClick={() => {
-                            if (item.id != null && typeof item.id === 'number' && confirm(`Êtes-vous sûr de vouloir supprimer "${item.name || 'cet article'}" ?`)) {
-                              handleDeleteItem(categoryId, item.id);
+                            if (item.id != null && typeof item.id === 'number') {
+                              showConfirm(
+                                `Êtes-vous sûr de vouloir supprimer "${item.name || 'cet article'}" ?`,
+                                () => handleDeleteItem(categoryId, item.id!),
+                                undefined,
+                                "Supprimer"
+                              );
                             }
                           }}
                           variant="outline"
@@ -137,6 +147,7 @@ export function ItemList({
           </div>
         );
       })}
+      <AlertComponent />
     </>
   );
 }

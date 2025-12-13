@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Edit, Save, X, GripVertical, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { SortableItem } from "./SortableItem";
 import { ItemList } from "./ItemList";
-import { handleEditItemFromExpanded } from "./editItemHelper";
+import { useAlert } from "@/lib/useAlert";
 
 interface CategoryHandlers {
   handleUpdateCategory: (id: string) => void;
@@ -17,6 +17,7 @@ interface CategoryHandlers {
   handleDeleteCategory: (id: string) => void;
   handleSaveItem: (categoryId: string, itemId: number, item: MenuItem) => void;
   handleDeleteItem: (categoryId: string, itemId: number) => void;
+  setEditingItem: (item: { categoryId: string; itemId: number } | null) => void;
 }
 
 interface SortableCategoryProps {
@@ -50,6 +51,7 @@ export function SortableCategory({
   formatters,
   filters,
 }: SortableCategoryProps) {
+  const { showConfirm, AlertComponent } = useAlert();
   const {
     attributes,
     listeners,
@@ -71,14 +73,8 @@ export function SortableCategory({
 
   const filteredItems = filters.filterCategoryItems(category.items || []);
 
-  const handleEditItem = (itemId: number) => {
-    handleEditItemFromExpanded(
-      itemId,
-      uiState.onToggleExpand,
-      () => {
-        // Edit complete callback - can be used for additional actions if needed
-      }
-    );
+  const handleEditItem = (categoryId: string, itemId: number) => {
+    handlers.setEditingItem({ categoryId, itemId });
   };
 
   const isEditing = editingState.editingCategory === category.id;
@@ -165,9 +161,12 @@ export function SortableCategory({
                 </Button>
                 <Button
                   onClick={() => {
-                    if (confirm(`Êtes-vous sûr de vouloir supprimer la catégorie "${category.label}" ? Cette action supprimera également tous les articles de cette catégorie.`)) {
-                      handlers.handleDeleteCategory(category.id);
-                    }
+                    showConfirm(
+                      `Êtes-vous sûr de vouloir supprimer la catégorie "${category.label}" ? Cette action supprimera également tous les articles de cette catégorie.`,
+                      () => handlers.handleDeleteCategory(category.id),
+                      undefined,
+                      "Supprimer"
+                    );
                   }}
                   variant="outline"
                   className="text-sm text-red-500 hover:text-red-700"
@@ -189,41 +188,16 @@ export function SortableCategory({
             theme={theme}
             categoryId={category.id}
             searchQuery={uiState.searchQuery}
-            formatPrice={formatters.formatPrice}
-            handleDeleteItem={handlers.handleDeleteItem}
             onToggleExpand={uiState.onToggleExpand}
-            onEditItem={handleEditItem}
+            handlers={{
+              formatPrice: formatters.formatPrice,
+              handleDeleteItem: handlers.handleDeleteItem,
+              onEditItem: handleEditItem,
+            }}
           />
         </div>
       )}
-      
-      {/* Sortable Items (for drag and drop) - Hidden when expanded */}
-      {!uiState.isExpanded && (
-        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
-            {category.items && category.items.length > 0 ? (
-              category.items.map((item) => {
-                if (item.id === undefined) return null;
-                return (
-                  <SortableItem
-                    key={item.id}
-                    item={item}
-                    categoryId={category.id}
-                    handleSaveItem={handlers.handleSaveItem}
-                    handleDeleteItem={handlers.handleDeleteItem}
-                  />
-                );
-              })
-            ) : (
-              <p className={`text-sm italic ${
-                theme === "dark" ? "text-white/50" : "text-slate-500"
-              }`}>
-                Vide
-              </p>
-            )}
-          </div>
-        </SortableContext>
-      )}
+      <AlertComponent />
     </div>
   );
 }

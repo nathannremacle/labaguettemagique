@@ -6,6 +6,7 @@ import { MenuItem } from "@/components/MenuSection";
 import { Edit, Save, X, Trash2 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import Image from "next/image";
+import { useAlert } from "@/lib/useAlert";
 
 interface EditableMenuItemProps {
   item: MenuItem;
@@ -27,6 +28,7 @@ export function EditableMenuItem({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { theme } = useTheme();
+  const { showAlert, AlertComponent } = useAlert();
 
   const handleSave = () => {
     onSave(categoryId, itemId, editData);
@@ -94,12 +96,17 @@ export function EditableMenuItem({
                 type="text"
                 value={editData.price || ""}
                 onChange={(e) => {
-                  // Only allow numbers, comma, dot, dash, space, and euro symbol
+                  // Only allow numbers, comma, dot, dash, and euro symbol
                   let value = e.target.value;
                   // Remove euro symbol temporarily for processing
                   value = value.replace(/€/g, '').trim();
-                  // Only allow numbers, comma, dot, dash, and spaces
-                  value = value.replace(/[^\d,.\-\s]/g, '');
+                  // Remove all spaces first
+                  value = value.replace(/\s+/g, '');
+                  // Only allow numbers, comma, dot, and dash
+                  value = value.replace(/[^\d,.\-]/g, '');
+                  // For price ranges, add space around dash: "5,50-6,50" -> "5,50 - 6,50"
+                  // Match pattern like "number-number" where number can contain digits, commas, or dots
+                  value = value.replace(/([\d,.]+)-([\d,.]+)/g, '$1 - $2');
                   // Add euro symbol if there's content
                   if (value) {
                     value = value + ' €';
@@ -107,10 +114,16 @@ export function EditableMenuItem({
                   setEditData({ ...editData, price: value });
                 }}
                 onBlur={(e) => {
-                  // Ensure euro symbol is present on blur
+                  // Clean up and ensure euro symbol is present on blur
                   let value = e.target.value.trim();
+                  // Remove all spaces (safety measure)
+                  value = value.replace(/\s+/g, '');
+                  // For price ranges, ensure proper spacing around dash
+                  value = value.replace(/([\d,.]+)-([\d,.]+)/g, '$1 - $2');
                   if (value && !value.includes('€')) {
                     value = value + ' €';
+                  }
+                  if (value !== e.target.value) {
                     setEditData({ ...editData, price: value });
                   }
                 }}
@@ -159,11 +172,11 @@ export function EditableMenuItem({
                           setEditData({ ...editData, image: data.url });
                         } else {
                           const error = await response.json();
-                          alert(error.error || "Erreur lors du téléchargement de l'image");
+                          await showAlert(error.error || "Erreur lors du téléchargement de l'image", "error");
                         }
                       } catch (error) {
                         console.error("Upload error:", error);
-                        alert("Erreur lors du téléchargement de l'image");
+                        await showAlert("Erreur lors du téléchargement de l'image", "error");
                       } finally {
                         setUploadingImage(false);
                       }
@@ -279,17 +292,23 @@ export function EditableMenuItem({
       }`}
     >
       <div className="flex gap-4">
-        {item.image && (
-          <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-            <Image
-              src={item.image}
-              alt={item.name}
-              fill
-              className="object-cover"
-              sizes="96px"
-            />
-          </div>
-        )}
+        <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-700">
+          <Image
+            src={item.image || `/images/placeholders/${categoryId}-0.jpg`}
+            alt={item.name}
+            fill
+            className="object-cover"
+            sizes="96px"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (!target.src.includes('/images/placeholders/')) {
+                target.src = `/images/placeholders/${categoryId}-0.jpg`;
+              } else {
+                target.style.display = 'none';
+              }
+            }}
+          />
+        </div>
         <div className="flex-1 min-w-0">
           <h3 className={`font-semibold ${
             theme === "dark" ? "text-white" : "text-slate-900"
@@ -301,7 +320,7 @@ export function EditableMenuItem({
           }`}>
             {item.description}
           </p>
-          <p className={`text-sm font-semibold ${
+          <p className={`text-sm font-semibold text-right ${
             theme === "dark" ? "text-amber-300" : "text-amber-600"
           }`}>
             {item.price && !item.price.includes('€') ? `${item.price} €` : item.price}
@@ -327,6 +346,7 @@ export function EditableMenuItem({
           </Button>
         </div>
       </div>
+      <AlertComponent />
     </div>
   );
 }

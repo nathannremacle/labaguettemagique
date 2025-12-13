@@ -17,6 +17,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Toast } from "@/components/ui/toast";
 import { cn, createSlug } from "@/lib/utils";
+import { useAlert } from "@/lib/useAlert";
 
 // Helper function to get local placeholder image based on category and item index
 function getItemImage(itemName: string, category: string, itemIndex: number): string {
@@ -28,8 +29,12 @@ function getItemImage(itemName: string, category: string, itemIndex: number): st
 // Helper function to format price with euro symbol
 function formatPrice(price: string | undefined): string {
   if (!price) return "";
-  if (price.includes("€")) return price;
-  return `${price} €`;
+  // Remove all spaces from the price (fix for "4000" -> "4 0 0 0" issue)
+  let cleaned = price.replace(/\s+/g, '');
+  // For price ranges, ensure proper spacing around dash
+  cleaned = cleaned.replace(/([\d,.]+)-([\d,.]+)/g, '$1 - $2');
+  if (cleaned.includes("€")) return cleaned;
+  return `${cleaned} €`;
 }
 
 // Memoized Menu Item Card Component for optimized rendering
@@ -130,7 +135,7 @@ const MenuItemCard = memo(function MenuItemCard({
           </div>
         </CardHeader>
         <CardContent className="mt-auto flex flex-col gap-3">
-          <div className="min-h-[32px] flex items-center">
+          <div className="min-h-[32px] flex items-center justify-start w-full">
             <span className={cn(
               "font-bold whitespace-nowrap",
               "text-lg sm:text-xl md:text-2xl",
@@ -188,6 +193,7 @@ export default function MenuPage() {
   const preloadedImages = useRef<Set<string>>(new Set());
   const { theme } = useTheme();
   const cart = useCart();
+  const { showAlert, AlertComponent } = useAlert();
 
   // Helper function to preload an image
   const preloadImage = (url: string, itemKey: string) => {
@@ -228,7 +234,7 @@ export default function MenuPage() {
         }
       } catch (error) {
         // Log error but don't expose details to user
-        console.error("Failed to load menu:", error);
+        console.error("Erreur lors du chargement du menu :", error);
         // Keep empty state on error - user will see empty menu
         setMenuData([]);
       } finally {
@@ -739,7 +745,7 @@ export default function MenuPage() {
               )}
               
               {/* Price */}
-              <div className="flex items-center gap-2 pb-2">
+              <div className="flex items-center justify-start gap-2 pb-2">
                 <span className={cn(
                   "font-bold",
                   "text-2xl sm:text-3xl md:text-4xl",
@@ -827,9 +833,9 @@ export default function MenuPage() {
 
               {/* Add to Cart Button */}
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (getSizeOptions(selectedItem.price).length > 0 && !selectedSize) {
-                    alert("Veuillez sélectionner une taille");
+                    await showAlert("Veuillez sélectionner une taille", "error");
                     return;
                   }
                   handleAddToCart(selectedItem, activeCategory, quantity, selectedSize);
@@ -866,6 +872,7 @@ export default function MenuPage() {
         isVisible={toastVisible}
         onClose={() => setToastVisible(false)}
       />
+      <AlertComponent />
     </div>
   );
 }
