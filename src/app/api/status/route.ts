@@ -9,7 +9,7 @@ export async function GET() {
     const status = getStatus();
     return createSuccessResponse(status);
   } catch (error) {
-    return createErrorResponse(error, "Failed to get status", 500);
+    return createErrorResponse(error, "Échec de la récupération du statut", 500);
   }
 }
 
@@ -17,7 +17,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   const user = requireAuth(request);
   if (!user) {
-    return createErrorResponse(null, "Unauthorized", 401);
+    return createErrorResponse(null, "Non autorisé", 401);
   }
 
   try {
@@ -25,7 +25,7 @@ export async function PUT(request: NextRequest) {
     setStatus(status);
     return createSuccessResponse({ success: true, status });
   } catch (error) {
-    return createErrorResponse(error, "Failed to update status", 500);
+    return createErrorResponse(error, "Échec de la mise à jour du statut", 500);
   }
 }
 

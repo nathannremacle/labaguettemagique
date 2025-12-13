@@ -17,12 +17,6 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH?.trim() || undefined;
 const DEFAULT_PASSWORD = "password";
 
-// Debug logging (remove in production)
-if (process.env.NODE_ENV !== "production") {
-  console.log("[Auth] ADMIN_USERNAME:", ADMIN_USERNAME);
-  console.log("[Auth] ADMIN_PASSWORD_HASH:", ADMIN_PASSWORD_HASH ? "SET (using bcrypt)" : "NOT SET (using default password)");
-  console.log("[Auth] DEFAULT_PASSWORD:", DEFAULT_PASSWORD);
-}
 
 /**
  * Authenticate a user with username and password
@@ -45,9 +39,6 @@ export function authenticate(
     // Use bcrypt comparison when hash is provided
     try {
       passwordValid = bcrypt.compareSync(password, passwordHash);
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[Auth] Using bcrypt comparison, result:", passwordValid);
-      }
     } catch (error) {
       console.error("Password comparison error:", error);
       return { success: false, error: "Authentication error" };
@@ -55,9 +46,6 @@ export function authenticate(
   } else {
     // Use plain text comparison for default password
     passwordValid = password === DEFAULT_PASSWORD;
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[Auth] Using default password comparison, result:", passwordValid);
-    }
   }
 
   if (!passwordValid) {
@@ -70,9 +58,6 @@ export function authenticate(
     if (!sessionId) {
       console.error("[Auth] Failed to create session");
       return { success: false, error: "Failed to create session" };
-    }
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[Auth] Session created successfully, sessionId length:", sessionId.length);
     }
     return { success: true, sessionId };
   } catch (error) {
@@ -160,15 +145,9 @@ function getPasswordHash(): string | undefined {
       }
     } catch (dbError) {
       // Table might not exist yet or query failed - that's okay, fall back to env var
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[Auth] No password found in database, using environment variable");
-      }
     }
   } catch (error) {
     // Database connection error - fall back to environment variable
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[Auth] Database error, using environment variable:", error);
-    }
   }
   
   // Fall back to environment variable
@@ -231,10 +210,6 @@ export function changePassword(
         password_hash = excluded.password_hash,
         updated_at = CURRENT_TIMESTAMP
     `).run(newPasswordHash);
-    
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[Auth] Password changed successfully");
-    }
     
     return { success: true };
   } catch (error) {

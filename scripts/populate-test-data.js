@@ -146,7 +146,7 @@ async function populateDatabase() {
   
   try {
     // Clear existing data
-    console.log('Clearing existing data...');
+    console.log('Suppression des données existantes...');
     db.prepare('DELETE FROM menu_items').run();
     db.prepare('DELETE FROM categories').run();
     
@@ -154,7 +154,7 @@ async function populateDatabase() {
     for (let i = 0; i < testData.categories.length; i++) {
       const category = testData.categories[i];
       
-      console.log(`Creating category: ${category.label}`);
+      console.log(`Création de la catégorie : ${category.label}`);
       
       // Insert category
       const categoryStmt = db.prepare(`
@@ -167,7 +167,7 @@ async function populateDatabase() {
       for (let j = 0; j < category.items.length; j++) {
         const item = category.items[j];
         
-        console.log(`  - Adding item: ${item.name}`);
+        console.log(`  - Ajout de l'article : ${item.name}`);
         
         // Download image
         let imagePath = null;
@@ -177,9 +177,9 @@ async function populateDatabase() {
             const filename = `${category.id}-${item.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.${ext}`;
             await downloadImage(item.imageUrl, filename);
             imagePath = `/images/menu-items/${filename}`;
-            console.log(`    ✓ Image downloaded: ${filename}`);
+            console.log(`    ✓ Image téléchargée : ${filename}`);
           } catch (error) {
-            console.log(`    ✗ Failed to download image: ${error.message}`);
+            console.log(`    ✗ Échec du téléchargement de l'image : ${error.message}`);
           }
         }
         
@@ -200,9 +200,9 @@ async function populateDatabase() {
       }
     }
     
-    console.log('\n✓ Database populated successfully!');
-    console.log(`✓ Created ${testData.categories.length} categories`);
-    console.log(`✓ Created ${testData.categories.reduce((sum, cat) => sum + cat.items.length, 0)} items`);
+    console.log('\n✓ Base de données remplie avec succès !');
+    console.log(`✓ ${testData.categories.length} catégories créées`);
+    console.log(`✓ ${testData.categories.reduce((sum, cat) => sum + cat.items.length, 0)} articles créés`);
     
   } catch (error) {
     console.error('Error populating database:', error);

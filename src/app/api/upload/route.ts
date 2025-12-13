@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = requireAuth(request);
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -133,10 +133,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error uploading file:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to upload file", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec du téléchargement du fichier", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 

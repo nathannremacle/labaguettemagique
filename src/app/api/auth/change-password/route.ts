@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const user = requireAuth(request);
     if (!user) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: "Non autorisé" },
         { status: 401 }
       );
     }
@@ -18,14 +18,14 @@ export async function POST(request: NextRequest) {
     // Input validation
     if (!currentPassword || !newPassword) {
       return NextResponse.json(
-        { error: "Current password and new password are required" },
+        { error: "Le mot de passe actuel et le nouveau mot de passe sont requis" },
         { status: 400 }
       );
     }
 
     if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
       return NextResponse.json(
-        { error: "Invalid input format" },
+        { error: "Format d'entrée invalide" },
         { status: 400 }
       );
     }
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // Sanitize input length
     if (currentPassword.length > 500 || newPassword.length > 500) {
       return NextResponse.json(
-        { error: "Input too long" },
+        { error: "Entrée trop longue" },
         { status: 400 }
       );
     }
@@ -43,19 +43,19 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { error: result.error || "Failed to change password" },
+        { error: result.error || "Échec du changement de mot de passe" },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Password changed successfully",
+      message: "Mot de passe modifié avec succès",
     });
   } catch (error) {
     console.error("Change password error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Erreur interne du serveur" },
       { status: 500 }
     );
   }

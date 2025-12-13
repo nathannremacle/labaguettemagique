@@ -12,33 +12,33 @@ async function resetDatabase() {
   const db = new Database(DB_PATH);
   
   try {
-    console.log('Resetting database...');
+    console.log('Réinitialisation de la base de données...');
     
     // Clear all data
-    console.log('  - Clearing menu items...');
+    console.log('  - Suppression des articles du menu...');
     db.prepare('DELETE FROM menu_items').run();
     
-    console.log('  - Clearing categories...');
+    console.log('  - Suppression des catégories...');
     db.prepare('DELETE FROM categories').run();
     
-    console.log('  - Clearing image references...');
+    console.log('  - Suppression des références d\'images...');
     db.prepare('DELETE FROM images').run();
     
     // Reset auto-increment counters
-    console.log('  - Resetting auto-increment counters...');
+    console.log('  - Réinitialisation des compteurs auto-incrémentés...');
     db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('menu_items', 'images')").run();
     
     // Vacuum database to reclaim space
-    console.log('  - Vacuuming database...');
+    console.log('  - Nettoyage de la base de données...');
     db.prepare('VACUUM').run();
     
-    console.log('\n✓ Database reset successfully!');
-    console.log('  - All categories cleared');
-    console.log('  - All menu items cleared');
-    console.log('  - All image references cleared');
+    console.log('\n✓ Base de données réinitialisée avec succès !');
+    console.log('  - Toutes les catégories supprimées');
+    console.log('  - Tous les articles du menu supprimés');
+    console.log('  - Toutes les références d\'images supprimées');
     
   } catch (error) {
-    console.error('Error resetting database:', error);
+    console.error('Erreur lors de la réinitialisation de la base de données :', error);
     process.exit(1);
   } finally {
     db.close();
@@ -48,7 +48,7 @@ async function resetDatabase() {
 // Function to delete uploaded images
 async function deleteUploadedImages() {
   try {
-    console.log('\nDeleting uploaded images...');
+    console.log('\nSuppression des images téléchargées...');
     
     // Delete thumbnails
     try {
@@ -61,11 +61,11 @@ async function deleteUploadedImages() {
             await fs.unlink(path.join(THUMBNAILS_DIR, file));
             deletedCount++;
           } catch (err) {
-            console.warn(`  Warning: Could not delete ${file}:`, err.message);
+            console.warn(`  Avertissement : Impossible de supprimer ${file} :`, err.message);
           }
         }
       }
-      console.log(`  - Deleted ${deletedCount} thumbnail(s)`);
+      console.log(`  - ${deletedCount} miniature(s) supprimée(s)`);
     } catch {
       // Directory doesn't exist, skip
     }
@@ -81,28 +81,28 @@ async function deleteUploadedImages() {
             await fs.unlink(path.join(IMAGES_DIR, file));
             deletedCount++;
           } catch (err) {
-            console.warn(`  Warning: Could not delete ${file}:`, err.message);
+            console.warn(`  Avertissement : Impossible de supprimer ${file} :`, err.message);
           }
         }
       }
-      console.log(`  - Deleted ${deletedCount} image(s)`);
+      console.log(`  - ${deletedCount} image(s) supprimée(s)`);
     } catch {
       // Directory doesn't exist, skip
     }
     
-    console.log('✓ Image cleanup completed!');
+    console.log('✓ Nettoyage des images terminé !');
     
   } catch (error) {
-    console.error('Error deleting images:', error);
+    console.error('Erreur lors de la suppression des images :', error);
     process.exit(1);
   }
 }
 
 // Run the reset
-console.log('=== Database and Image Reset ===\n');
+console.log('=== Réinitialisation de la Base de Données et des Images ===\n');
 (async () => {
   await resetDatabase();
   await deleteUploadedImages();
 })();
-console.log('\n=== Reset Complete ===');
+console.log('\n=== Réinitialisation Terminée ===');
 

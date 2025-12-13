@@ -6,7 +6,7 @@ import { getAllCategoriesWithItems, createCategory, getAllCategories } from "@/l
 export async function GET(request: NextRequest) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     console.error("Error reading categories:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to read categories", details: errorMessage },
+      { error: "Échec de la lecture des catégories", details: errorMessage },
       { status: 500 }
     );
   }
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Validate input
     if (!newCategory || !newCategory.label || typeof newCategory.label !== 'string') {
       return NextResponse.json(
-        { error: "Category label is required" },
+        { error: "Le libellé de la catégorie est requis" },
         { status: 400 }
       );
     }
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const label = newCategory.label.trim();
     if (label.length === 0) {
       return NextResponse.json(
-        { error: "Category label cannot be empty" },
+        { error: "Le libellé de la catégorie ne peut pas être vide" },
         { status: 400 }
       );
     }
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Validate label length (prevent DoS)
     if (label.length > 100) {
       return NextResponse.json(
-        { error: "Category label is too long (max 100 characters)" },
+        { error: "Le libellé de la catégorie est trop long (maximum 100 caractères)" },
         { status: 400 }
       );
     }
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const existingCategory = existingCategories.find(cat => cat.id === id);
     if (existingCategory) {
       return NextResponse.json(
-        { error: "Category with this name already exists" },
+        { error: "Une catégorie avec ce nom existe déjà" },
         { status: 409 }
       );
     }
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating category:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to create category", details: errorMessage },
+      { error: "Échec de la création de la catégorie", details: errorMessage },
       { status: 500 }
     );
   }

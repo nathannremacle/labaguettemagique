@@ -10,38 +10,48 @@ interface FooterItemData {
   visible?: boolean;
 }
 
-export function validateFooterItem(data: FooterItemData): { valid: boolean; error?: string; validated?: any } {
+interface ValidatedFooterItem {
+  title: string;
+  description?: string;
+  icon?: string;
+  link?: string;
+  menu_item_name?: string;
+  menu_category_id?: string;
+  visible: boolean;
+}
+
+export function validateFooterItem(data: FooterItemData): { valid: boolean; error?: string; validated?: ValidatedFooterItem } {
   // Validate title
   if (!data.title || typeof data.title !== "string") {
-    return { valid: false, error: "Title is required" };
+    return { valid: false, error: "Le titre est requis" };
   }
   
   const title = String(data.title).trim();
   if (title.length === 0 || title.length > 200) {
-    return { valid: false, error: "Title must be between 1 and 200 characters" };
+    return { valid: false, error: "Le titre doit contenir entre 1 et 200 caractères" };
   }
   
   // Validate description
   const description = data.description ? String(data.description).trim() : undefined;
   if (description && description.length > 500) {
-    return { valid: false, error: "Description must be less than 500 characters" };
+    return { valid: false, error: "La description doit contenir moins de 500 caractères" };
   }
   
   // Validate icon
   const icon = data.icon ? String(data.icon).trim() : undefined;
   if (icon && icon.length > 100) {
-    return { valid: false, error: "Icon must be less than 100 characters" };
+    return { valid: false, error: "L'icône doit contenir moins de 100 caractères" };
   }
   
   // Validate link
   const link = data.link ? String(data.link).trim() : undefined;
   if (link && link.length > 500) {
-    return { valid: false, error: "Link must be less than 500 characters" };
+    return { valid: false, error: "Le lien doit contenir moins de 500 caractères" };
   }
   
   // Validate link format if provided
   if (link && !link.startsWith("/") && !link.startsWith("http://") && !link.startsWith("https://") && !link.startsWith("mailto:") && !link.startsWith("tel:")) {
-    return { valid: false, error: "Invalid link format" };
+    return { valid: false, error: "Format de lien invalide" };
   }
   
   return {
@@ -69,7 +79,7 @@ export async function validateMenuItemLink(
   if (!menu_item_name || !menu_category_id) {
     return {
       valid: false,
-      error: "Both menu_item_name and menu_category_id are required when linking to a menu item",
+      error: "Le nom d'article de menu et l'identifiant de catégorie sont requis lors de la liaison à un article de menu",
     };
   }
   
@@ -78,12 +88,12 @@ export async function validateMenuItemLink(
   // Validate category exists
   const category = getCategoryById(menu_category_id);
   if (!category) {
-    return { valid: false, error: "Menu category not found" };
+    return { valid: false, error: "Catégorie de menu introuvable" };
   }
   
   // Validate menu item exists in category
   if (!validateMenuItem(menu_category_id, menu_item_name)) {
-    return { valid: false, error: "Menu item not found in the specified category" };
+    return { valid: false, error: "Article de menu introuvable dans la catégorie spécifiée" };
   }
   
   return { valid: true };

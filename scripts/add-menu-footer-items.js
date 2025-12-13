@@ -1,38 +1,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const { getMenuData } = require('./utils/dbUtils');
+const { validateMenuLink } = require('./utils/menuValidation');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'menu.db');
-
-// Function to get menu categories and items
-function getMenuData() {
-  const db = new Database(DB_PATH);
-  
-  try {
-    // Get all categories
-    const categoriesStmt = db.prepare(`
-      SELECT id, label FROM categories ORDER BY "order" ASC
-    `);
-    const categories = categoriesStmt.all();
-    
-    // Get items for each category
-    const itemsStmt = db.prepare(`
-      SELECT category_id, name FROM menu_items WHERE category_id = ?
-    `);
-    
-    const menuData = {};
-    for (const cat of categories) {
-      const items = itemsStmt.all(cat.id);
-      menuData[cat.id] = {
-        label: cat.label,
-        items: items.map(i => i.name)
-      };
-    }
-    
-    return menuData;
-  } finally {
-    db.close();
-  }
-}
 
 // Footer items to add/update - these should link to actual menu items
 // You can customize these based on your menu
@@ -63,33 +34,86 @@ const footerItems = [
   }
 ];
 
+/**
+ * Get the next order value for footer items
+ */
+function getNextOrder(db, maxOrderStmt) {
+  const maxOrderResult = maxOrderStmt.get();
+  if (maxOrderResult?.max_order != null) {
+    return maxOrderResult.max_order + 1;
+  }
+  return 0;
+}
+
+/**
+ * Validate and correct menu item link if needed
+ */
+function validateAndCorrectMenuItem(menuData, item) {
+  if (item.menu_category_id && item.menu_item_name) {
+    const validation = validateMenuLink(menuData, item.menu_category_id, item.menu_item_name);
+    
+    if (!validation.valid) {
+      return { valid: false, error: validation.error };
+    }
+    
+    if (validation.correctedItem) {
+      return { valid: true, correctedItem: validation.correctedItem };
+    }
+  }
+  return { valid: true };
+}
+
+/**
+ * Insert or update a footer item
+ */
+function insertOrUpdateFooterItem(db, item, existing, insertStmt, updateStmt, nextOrder) {
+  if (existing) {
+    // Update existing item
+    updateStmt.run(
+      item.description || null,
+      item.icon || null,
+      item.menu_category_id || null,
+      item.menu_item_name || null,
+      item.visible ? 1 : 0,
+      existing.id
+    );
+    console.log(`  ✓ Mis à jour : ${item.title} ${item.icon || ''} → /menu/${item.menu_category_id}/${item.menu_item_name}`);
+  } else {
+    // Insert new item
+    insertStmt.run(
+      item.title,
+      item.description || null,
+      item.icon || null,
+      item.menu_category_id || null,
+      item.menu_item_name || null,
+      nextOrder,
+      item.visible ? 1 : 0
+    );
+    console.log(`  ✓ Ajouté : ${item.title} ${item.icon || ''} → /menu/${item.menu_category_id}/${item.menu_item_name}`);
+  }
+}
+
 // Main function
 function addMenuFooterItems() {
   const db = new Database(DB_PATH);
   
   try {
-    console.log('Fetching menu data...');
+    console.log('Récupération des données du menu...');
     const menuData = getMenuData();
     
-    console.log('\nAvailable categories and items:');
+    console.log('\nCatégories et articles disponibles :');
     for (const [catId, data] of Object.entries(menuData)) {
-      console.log(`  ${catId}: ${data.label}`);
+      console.log(`  ${catId} : ${data.label}`);
       if (data.items.length > 0) {
-        console.log(`    Items: ${data.items.slice(0, 3).join(', ')}${data.items.length > 3 ? '...' : ''}`);
+        console.log(`    Articles : ${data.items.slice(0, 3).join(', ')}${data.items.length > 3 ? '...' : ''}`);
       }
     }
     
-    console.log('\nAdding/updating footer items with menu links...');
+    console.log('\nAjout/mise à jour des éléments du footer avec liens vers le menu...');
     
     // Get max order
     const maxOrderStmt = db.prepare("SELECT MAX(\"order\") as max_order FROM footer_items");
-    const maxOrderResult = maxOrderStmt.get();
-    let nextOrder;
-    if (maxOrderResult?.max_order != null) {
-      nextOrder = maxOrderResult.max_order + 1;
-    } else {
-      nextOrder = 0;
-    }
+    let nextOrder = getNextOrder(db, maxOrderStmt);
     
     // Check if items already exist
     const checkStmt = db.prepare("SELECT id, title FROM footer_items WHERE title = ?");
@@ -106,60 +130,32 @@ function addMenuFooterItems() {
     for (const item of footerItems) {
       const existing = checkStmt.get(item.title);
       
-      // Validate menu link
-      if (item.menu_category_id && item.menu_item_name) {
-        const categoryData = menuData[item.menu_category_id];
-        if (!categoryData) {
-          console.log(`  ⚠ Category "${item.menu_category_id}" not found, skipping "${item.title}"`);
-          continue;
+      // Validate menu link using utility function
+      const validation = validateAndCorrectMenuItem(menuData, item);
+      
+      if (!validation.valid) {
+        console.log(`  ⚠ ${validation.error}, ignoré "${item.title}"`);
+        if (validation.error.includes('not found in category')) {
+          console.log(`  → Articles disponibles : ${menuData[item.menu_category_id]?.items.slice(0, 3).join(', ') || 'aucun'}`);
         }
-        if (!categoryData.items.includes(item.menu_item_name)) {
-          console.log(`  ⚠ Item "${item.menu_item_name}" not found in category "${item.menu_category_id}", skipping "${item.title}"`);
-          // Try to find a similar item
-          const similarItem = categoryData.items.find(i => 
-            i.toLowerCase().includes(item.menu_item_name.toLowerCase()) ||
-            item.menu_item_name.toLowerCase().includes(i.toLowerCase())
-          );
-          if (similarItem) {
-            console.log(`  → Using similar item: "${similarItem}"`);
-            item.menu_item_name = similarItem;
-          } else {
-            console.log(`  → Available items: ${categoryData.items.slice(0, 3).join(', ')}`);
-            continue;
-          }
-        }
+        continue;
       }
       
-      if (existing) {
-        // Update existing item
-        updateStmt.run(
-          item.description || null,
-          item.icon || null,
-          item.menu_category_id || null,
-          item.menu_item_name || null,
-          item.visible ? 1 : 0,
-          existing.id
-        );
-        console.log(`  ✓ Updated: ${item.title} ${item.icon || ''} → /menu/${item.menu_category_id}/${item.menu_item_name}`);
-      } else {
-        // Insert new item
-        insertStmt.run(
-          item.title,
-          item.description || null,
-          item.icon || null,
-          item.menu_category_id || null,
-          item.menu_item_name || null,
-          nextOrder++,
-          item.visible ? 1 : 0
-        );
-        console.log(`  ✓ Added: ${item.title} ${item.icon || ''} → /menu/${item.menu_category_id}/${item.menu_item_name}`);
+      if (validation.correctedItem) {
+        console.log(`  → Utilisation d'un article similaire : "${validation.correctedItem}"`);
+        item.menu_item_name = validation.correctedItem;
+      }
+      
+      insertOrUpdateFooterItem(db, item, existing, insertStmt, updateStmt, nextOrder);
+      if (!existing) {
+        nextOrder++;
       }
     }
     
-    console.log('\n✓ Footer items with menu links added/updated successfully!');
+    console.log('\n✓ Éléments du footer avec liens vers le menu ajoutés/mis à jour avec succès !');
     
   } catch (error) {
-    console.error('Error adding footer items:', error);
+    console.error('Erreur lors de l\'ajout des éléments du footer :', error);
     process.exit(1);
   } finally {
     db.close();
@@ -168,4 +164,3 @@ function addMenuFooterItems() {
 
 // Run the script
 addMenuFooterItems();
-

@@ -301,7 +301,7 @@ function sleep(ms) {
 
 // Main function to process a single item
 async function processMenuItem(item) {
-  console.log(`\nProcessing: ${item.name} (ID: ${item.id})`);
+  console.log(`\nTraitement : ${item.name} (ID : ${item.id})`);
   
   // Skip if already has an image (unless we want to replace)
   // For now, we'll replace existing images as per user preference
@@ -312,15 +312,15 @@ async function processMenuItem(item) {
 
   try {
     // Search for images
-    console.log(`  🔍 Searching for images...`);
+    console.log(`  🔍 Recherche d'images...`);
     const imageUrls = await searchGoogleImages(item.name);
     
     if (imageUrls.length === 0) {
-      console.log(`  ❌ No images found`);
+      console.log(`  ❌ Aucune image trouvée`);
       return { success: false, error: 'No images found' };
     }
 
-    console.log(`  📥 Found ${imageUrls.length} image(s), trying to download...`);
+    console.log(`  📥 ${imageUrls.length} image(s) trouvée(s), tentative de téléchargement...`);
 
     // Try each image URL until one works
     let success = false;
@@ -328,47 +328,47 @@ async function processMenuItem(item) {
 
     for (const imageUrl of imageUrls) {
       try {
-        console.log(`  📥 Downloading: ${imageUrl.substring(0, 60)}...`);
+        console.log(`  📥 Téléchargement : ${imageUrl.substring(0, 60)}...`);
         const buffer = await downloadImage(imageUrl);
         
-        console.log(`  🖼️  Processing image...`);
+        console.log(`  🖼️  Traitement de l'image...`);
         const imagePath = await processAndSaveImage(buffer, `${item.name}.jpg`);
         
-        console.log(`  💾 Updating database...`);
+        console.log(`  💾 Mise à jour de la base de données...`);
         updateMenuItemImage(item.id, imagePath);
         
-        console.log(`  ✅ Success! Image saved: ${imagePath}`);
+        console.log(`  ✅ Succès ! Image enregistrée : ${imagePath}`);
         success = true;
         break;
       } catch (error) {
-        console.log(`  ⚠️  Failed: ${error.message}`);
+        console.log(`  ⚠️  Échec : ${error.message}`);
         lastError = error;
         continue;
       }
     }
 
     if (!success) {
-      console.log(`  ❌ All download attempts failed`);
+      console.log(`  ❌ Toutes les tentatives de téléchargement ont échoué`);
       return { success: false, error: lastError?.message || 'All downloads failed' };
     }
 
     return { success: true };
   } catch (error) {
-    console.error(`  ❌ Error processing item: ${error.message}`);
+    console.error(`  ❌ Erreur lors du traitement de l'article : ${error.message}`);
     return { success: false, error: error.message };
   }
 }
 
 // Main execution
 async function main() {
-  console.log('🚀 Starting image download script...\n');
+  console.log('🚀 Démarrage du script de téléchargement d\'images...\n');
   
   // Check for test mode (limit number of items)
   const testMode = process.argv.includes('--test');
   const testLimit = testMode ? 3 : null; // Process only 3 items in test mode
   
   if (testMode) {
-    console.log('🧪 TEST MODE: Processing only first 3 items\n');
+    console.log('🧪 MODE TEST : Traitement des 3 premiers articles uniquement\n');
   }
   
   // Ensure directories exist
@@ -382,7 +382,7 @@ async function main() {
     items = items.slice(0, testLimit);
   }
   
-  console.log(`📋 Found ${items.length} menu items to process\n`);
+  console.log(`📋 ${items.length} articles du menu à traiter\n`);
 
   const results = {
     total: items.length,
@@ -410,19 +410,19 @@ async function main() {
 
     // Rate limiting - wait between requests (except for last item)
     if (i < items.length - 1) {
-      console.log(`  ⏳ Waiting ${DELAY_BETWEEN_REQUESTS / 1000}s before next item...`);
+      console.log(`  ⏳ Attente de ${DELAY_BETWEEN_REQUESTS / 1000}s avant le prochain article...`);
       await sleep(DELAY_BETWEEN_REQUESTS);
     }
   }
 
   // Summary
   console.log('\n' + '='.repeat(50));
-  console.log('📊 SUMMARY');
+  console.log('📊 RÉSUMÉ');
   console.log('='.repeat(50));
-  console.log(`Total items: ${results.total}`);
-  console.log(`✅ Successful: ${results.success}`);
-  console.log(`⏭️  Skipped: ${results.skipped}`);
-  console.log(`❌ Failed: ${results.failed}`);
+  console.log(`Articles totaux : ${results.total}`);
+  console.log(`✅ Réussis : ${results.success}`);
+  console.log(`⏭️  Ignorés : ${results.skipped}`);
+  console.log(`❌ Échoués : ${results.failed}`);
   console.log('='.repeat(50));
 }
 

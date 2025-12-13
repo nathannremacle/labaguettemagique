@@ -6,7 +6,7 @@ import { reorderCategories, reorderItems } from "@/lib/menu-db";
 export async function POST(request: NextRequest) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     if (type === "categories") {
       if (!Array.isArray(ids) || ids.length === 0) {
         return NextResponse.json(
-          { error: "Invalid category IDs array" },
+          { error: "Tableau d'identifiants de catégories invalide" },
           { status: 400 }
         );
       }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (type === "items") {
       if (!categoryId || !Array.isArray(ids) || ids.length === 0) {
         return NextResponse.json(
-          { error: "Category ID and item IDs array are required" },
+          { error: "L'identifiant de catégorie et le tableau d'identifiants d'articles sont requis" },
           { status: 400 }
         );
       }
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       const itemIds = ids.map((id: unknown) => parseInt(String(id))).filter((id: number) => !isNaN(id));
       if (itemIds.length !== ids.length) {
         return NextResponse.json(
-          { error: "Invalid item IDs" },
+          { error: "Identifiants d'articles invalides" },
           { status: 400 }
         );
       }
@@ -46,16 +46,16 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: "Invalid reorder type. Use 'categories' or 'items'" },
+      { error: "Type de réorganisation invalide. Utilisez 'categories' ou 'items'" },
       { status: 400 }
     );
   } catch (error) {
     console.error("Error reordering:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to reorder", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec de la réorganisation", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 

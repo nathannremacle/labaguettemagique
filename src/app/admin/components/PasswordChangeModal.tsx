@@ -3,14 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
-interface PasswordChangeModalProps {
-  theme: string;
-  isOpen: boolean;
+interface PasswordState {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
   passwordError: string;
   changingPassword: boolean;
+}
+
+interface PasswordHandlers {
   onCurrentPasswordChange: (value: string) => void;
   onNewPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
@@ -18,20 +19,34 @@ interface PasswordChangeModalProps {
   onClose: () => void;
 }
 
+interface PasswordChangeModalProps {
+  theme: string;
+  isOpen: boolean;
+  passwordState: PasswordState;
+  handlers: PasswordHandlers;
+}
+
 export function PasswordChangeModal({
   theme,
   isOpen,
-  currentPassword,
-  newPassword,
-  confirmPassword,
-  passwordError,
-  changingPassword,
-  onCurrentPasswordChange,
-  onNewPasswordChange,
-  onConfirmPasswordChange,
-  onChangePassword,
-  onClose,
+  passwordState,
+  handlers,
 }: PasswordChangeModalProps) {
+  const {
+    currentPassword,
+    newPassword,
+    confirmPassword,
+    passwordError,
+    changingPassword,
+  } = passwordState;
+  
+  const {
+    onCurrentPasswordChange,
+    onNewPasswordChange,
+    onConfirmPasswordChange,
+    onChangePassword,
+    onClose,
+  } = handlers;
   if (!isOpen) return null;
 
   return (

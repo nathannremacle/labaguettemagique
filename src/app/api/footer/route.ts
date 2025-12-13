@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -56,10 +56,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error creating footer item:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to create footer item", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec de la création de l'élément du footer", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 

@@ -446,19 +446,19 @@ function populateDatabase() {
   const db = new Database(DB_PATH);
   
   try {
-    console.log('Populating menu database...\n');
+    console.log('Remplissage de la base de données du menu...\n');
     
     // Insert categories and items
     for (let i = 0; i < menuData.categories.length; i++) {
       const category = menuData.categories[i];
       
-      console.log(`Creating category: ${category.label}`);
+      console.log(`Création de la catégorie : ${category.label}`);
       
       // Check if category already exists
       const existingCategory = db.prepare('SELECT id FROM categories WHERE id = ?').get(category.id);
       
       if (existingCategory) {
-        console.log(`  Category "${category.label}" already exists, skipping...`);
+        console.log(`  La catégorie "${category.label}" existe déjà, ignorée...`);
         continue;
       }
       
@@ -473,7 +473,7 @@ function populateDatabase() {
       for (let j = 0; j < category.items.length; j++) {
         const item = category.items[j];
         
-        console.log(`  - Adding item: ${item.name}`);
+        console.log(`  - Ajout de l'article : ${item.name}`);
         
         // Insert item
         const itemStmt = db.prepare(`
@@ -492,13 +492,13 @@ function populateDatabase() {
       }
     }
     
-    console.log('\n✓ Database populated successfully!');
-    console.log(`✓ Created ${menuData.categories.length} categories`);
+    console.log('\n✓ Base de données remplie avec succès !');
+    console.log(`✓ ${menuData.categories.length} catégories créées`);
     const totalItems = menuData.categories.reduce((sum, cat) => sum + cat.items.length, 0);
-    console.log(`✓ Created ${totalItems} items`);
+    console.log(`✓ ${totalItems} articles créés`);
     
   } catch (error) {
-    console.error('Error populating database:', error);
+    console.error('Erreur lors du remplissage de la base de données :', error);
     process.exit(1);
   } finally {
     db.close();

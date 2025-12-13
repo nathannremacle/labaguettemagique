@@ -9,7 +9,7 @@ export async function POST(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -20,7 +20,7 @@ export async function POST(
     const category = getCategoryById(categoryId);
     if (!category) {
       return NextResponse.json(
-        { error: "Category not found" },
+        { error: "Catégorie introuvable" },
         { status: 404 }
       );
     }
@@ -28,7 +28,7 @@ export async function POST(
     // Validate required fields
     if (!newItem.name || !newItem.description || !newItem.price) {
       return NextResponse.json(
-        { error: "Name, description, and price are required" },
+        { error: "Le nom, la description et le prix sont requis" },
         { status: 400 }
       );
     }
@@ -36,7 +36,7 @@ export async function POST(
     // Validate input types
     if (typeof newItem.name !== "string" || typeof newItem.description !== "string" || typeof newItem.price !== "string") {
       return NextResponse.json(
-        { error: "Invalid input format" },
+        { error: "Format d'entrée invalide" },
         { status: 400 }
       );
     }
@@ -48,21 +48,21 @@ export async function POST(
     
     if (name.length === 0 || name.length > 200) {
       return NextResponse.json(
-        { error: "Item name must be between 1 and 200 characters" },
+        { error: "Le nom de l'article doit contenir entre 1 et 200 caractères" },
         { status: 400 }
       );
     }
     
     if (description.length === 0 || description.length > 1000) {
       return NextResponse.json(
-        { error: "Item description must be between 1 and 1000 characters" },
+        { error: "La description de l'article doit contenir entre 1 et 1000 caractères" },
         { status: 400 }
       );
     }
     
     if (price.length === 0 || price.length > 50) {
       return NextResponse.json(
-        { error: "Price must be between 1 and 50 characters" },
+        { error: "Le prix doit contenir entre 1 et 50 caractères" },
         { status: 400 }
       );
     }
@@ -73,14 +73,14 @@ export async function POST(
       const image = String(newItem.image);
       if (image.length > 500) {
         return NextResponse.json(
-          { error: "Image path is too long" },
+          { error: "Le chemin de l'image est trop long" },
           { status: 400 }
         );
       }
       // Ensure image path is safe (starts with /images/)
       if (!image.startsWith("/images/") || image.includes("..")) {
         return NextResponse.json(
-          { error: "Invalid image path" },
+          { error: "Chemin d'image invalide" },
           { status: 400 }
         );
       }
@@ -111,7 +111,7 @@ export async function POST(
     console.error("Error creating item:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to create item", details: errorMessage },
+      { error: "Échec de la création de l'article", details: errorMessage },
       { status: 500 }
     );
   }

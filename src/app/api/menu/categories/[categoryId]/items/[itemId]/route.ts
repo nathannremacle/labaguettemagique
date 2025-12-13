@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -18,7 +18,7 @@ export async function GET(
     
     if (isNaN(itemIdNum)) {
       return NextResponse.json(
-        { error: "Invalid item ID" },
+        { error: "Identifiant d'article invalide" },
         { status: 400 }
       );
     }
@@ -27,7 +27,7 @@ export async function GET(
     const category = getCategoryById(categoryId);
     if (!category) {
       return NextResponse.json(
-        { error: "Category not found" },
+        { error: "Catégorie introuvable" },
         { status: 404 }
       );
     }
@@ -35,7 +35,7 @@ export async function GET(
     const item = getItemById(itemIdNum);
     if (!item || item.category_id !== categoryId) {
       return NextResponse.json(
-        { error: "Item not found" },
+        { error: "Article introuvable" },
         { status: 404 }
       );
     }
@@ -51,10 +51,10 @@ export async function GET(
   } catch (error) {
     console.error("Error reading item:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to read item", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec de la lecture de l'article", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 
@@ -65,7 +65,7 @@ export async function PUT(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -75,7 +75,7 @@ export async function PUT(
     
     if (isNaN(itemIdNum)) {
       return NextResponse.json(
-        { error: "Invalid item ID" },
+        { error: "Identifiant d'article invalide" },
         { status: 400 }
       );
     }
@@ -84,7 +84,7 @@ export async function PUT(
     const category = getCategoryById(categoryId);
     if (!category) {
       return NextResponse.json(
-        { error: "Category not found" },
+        { error: "Catégorie introuvable" },
         { status: 404 }
       );
     }
@@ -93,7 +93,7 @@ export async function PUT(
     const existingItem = getItemById(itemIdNum);
     if (!existingItem || existingItem.category_id !== categoryId) {
       return NextResponse.json(
-        { error: "Item not found" },
+        { error: "Article introuvable" },
         { status: 404 }
       );
     }
@@ -110,14 +110,14 @@ export async function PUT(
     if (updates.name !== undefined) {
       if (typeof updates.name !== "string") {
         return NextResponse.json(
-          { error: "Invalid name format" },
+          { error: "Format de nom invalide" },
           { status: 400 }
         );
       }
       const name = updates.name.trim();
       if (name.length === 0 || name.length > 200) {
         return NextResponse.json(
-          { error: "Item name must be between 1 and 200 characters" },
+          { error: "Le nom de l'article doit contenir entre 1 et 200 caractères" },
           { status: 400 }
         );
       }
@@ -127,14 +127,14 @@ export async function PUT(
     if (updates.description !== undefined) {
       if (typeof updates.description !== "string") {
         return NextResponse.json(
-          { error: "Invalid description format" },
+          { error: "Format de description invalide" },
           { status: 400 }
         );
       }
       const description = updates.description.trim();
       if (description.length === 0 || description.length > 1000) {
         return NextResponse.json(
-          { error: "Item description must be between 1 and 1000 characters" },
+          { error: "La description de l'article doit contenir entre 1 et 1000 caractères" },
           { status: 400 }
         );
       }
@@ -144,14 +144,14 @@ export async function PUT(
     if (updates.price !== undefined) {
       if (typeof updates.price !== "string") {
         return NextResponse.json(
-          { error: "Invalid price format" },
+          { error: "Format de prix invalide" },
           { status: 400 }
         );
       }
       const price = updates.price.trim();
       if (price.length === 0 || price.length > 50) {
         return NextResponse.json(
-          { error: "Price must be between 1 and 50 characters" },
+          { error: "Le prix doit contenir entre 1 et 50 caractères" },
           { status: 400 }
         );
       }
@@ -164,21 +164,21 @@ export async function PUT(
       } else {
         if (typeof updates.image !== "string") {
           return NextResponse.json(
-            { error: "Invalid image path format" },
+            { error: "Format de chemin d'image invalide" },
             { status: 400 }
           );
         }
         const image = updates.image.trim();
         if (image.length > 500) {
           return NextResponse.json(
-            { error: "Image path is too long" },
+            { error: "Le chemin de l'image est trop long" },
             { status: 400 }
           );
         }
         // Ensure image path is safe (starts with /images/)
         if (!image.startsWith("/images/") || image.includes("..")) {
           return NextResponse.json(
-            { error: "Invalid image path" },
+            { error: "Chemin d'image invalide" },
             { status: 400 }
           );
         }
@@ -194,7 +194,7 @@ export async function PUT(
     
     if (!item) {
       return NextResponse.json(
-        { error: "Failed to update item" },
+        { error: "Échec de la mise à jour de l'article" },
         { status: 500 }
       );
     }
@@ -213,10 +213,10 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating item:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to update item", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec de la mise à jour de l'article", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 
@@ -227,7 +227,7 @@ export async function DELETE(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -236,7 +236,7 @@ export async function DELETE(
     
     if (isNaN(itemIdNum)) {
       return NextResponse.json(
-        { error: "Invalid item ID" },
+        { error: "Identifiant d'article invalide" },
         { status: 400 }
       );
     }
@@ -245,7 +245,7 @@ export async function DELETE(
     const category = getCategoryById(categoryId);
     if (!category) {
       return NextResponse.json(
-        { error: "Category not found" },
+        { error: "Catégorie introuvable" },
         { status: 404 }
       );
     }
@@ -254,7 +254,7 @@ export async function DELETE(
     const existingItem = getItemById(itemIdNum);
     if (!existingItem || existingItem.category_id !== categoryId) {
       return NextResponse.json(
-        { error: "Item not found" },
+        { error: "Article introuvable" },
         { status: 404 }
       );
     }
@@ -263,7 +263,7 @@ export async function DELETE(
     
     if (!success) {
       return NextResponse.json(
-        { error: "Failed to delete item" },
+        { error: "Échec de la suppression de l'article" },
         { status: 500 }
       );
     }
@@ -272,10 +272,10 @@ export async function DELETE(
   } catch (error) {
     console.error("Error deleting item:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to delete item", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec de la suppression de l'article", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 

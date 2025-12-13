@@ -28,11 +28,9 @@ export function useAdminLogin() {
       });
 
       const data: LoginResponse = await response.json();
-      console.log("[Login] Response status:", response.status, "Response data:", data);
 
       if (response.ok) {
         if (data.success !== false && !data.error) {
-          console.log("[Login] Authentication successful, redirecting to admin dashboard");
           setLoading(false);
           setTimeout(() => {
             window.location.href = "/admin";

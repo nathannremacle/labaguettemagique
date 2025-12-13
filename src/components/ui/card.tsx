@@ -69,6 +69,6 @@ export function CardContent({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mt-4 flex items-end justify-between", className)} {...props} />;
+  return <div className={cn("mt-4", className)} {...props} />;
 }
 

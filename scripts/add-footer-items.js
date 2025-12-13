@@ -33,7 +33,7 @@ function addFooterItems() {
   const db = new Database(DB_PATH);
   
   try {
-    console.log('Adding footer items...');
+    console.log('Ajout des éléments du footer...');
     
     // Get max order
     const maxOrderStmt = db.prepare("SELECT MAX(\"order\") as max_order FROM footer_items");
@@ -55,7 +55,7 @@ function addFooterItems() {
     for (const item of footerItems) {
       const existing = checkStmt.get(item.title);
       if (existing) {
-        console.log(`  ⚠ Item "${item.title}" already exists, skipping...`);
+        console.log(`  ⚠ L'élément "${item.title}" existe déjà, ignoré...`);
         continue;
       }
       
@@ -68,13 +68,13 @@ function addFooterItems() {
         item.visible ? 1 : 0
       );
       
-      console.log(`  ✓ Added: ${item.title} ${item.icon || ''}`);
+      console.log(`  ✓ Ajouté : ${item.title} ${item.icon || ''}`);
     }
     
-    console.log('\n✓ Footer items added successfully!');
+    console.log('\n✓ Éléments du footer ajoutés avec succès !');
     
   } catch (error) {
-    console.error('Error adding footer items:', error);
+    console.error('Erreur lors de l\'ajout des éléments du footer :', error);
     process.exit(1);
   } finally {
     db.close();

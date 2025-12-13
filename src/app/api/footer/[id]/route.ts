@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -18,7 +18,7 @@ export async function GET(
     
     if (isNaN(itemId)) {
       return NextResponse.json(
-        { error: "Invalid item ID" },
+        { error: "Identifiant d'élément invalide" },
         { status: 400 }
       );
     }
@@ -26,7 +26,7 @@ export async function GET(
     const item = getFooterItemById(itemId);
     if (!item) {
       return NextResponse.json(
-        { error: "Item not found" },
+        { error: "Élément introuvable" },
         { status: 404 }
       );
     }
@@ -35,10 +35,10 @@ export async function GET(
   } catch (error) {
     console.error("Error reading footer item:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to read footer item", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec de la lecture de l'élément du footer", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 
@@ -49,7 +49,7 @@ export async function PUT(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -59,7 +59,7 @@ export async function PUT(
     
     if (isNaN(itemId)) {
       return NextResponse.json(
-        { error: "Invalid item ID" },
+        { error: "Identifiant d'élément invalide" },
         { status: 400 }
       );
     }
@@ -78,14 +78,14 @@ export async function PUT(
     if (updates.title !== undefined) {
       if (typeof updates.title !== "string") {
         return NextResponse.json(
-          { error: "Invalid title format" },
+          { error: "Format de titre invalide" },
           { status: 400 }
         );
       }
       const title = updates.title.trim();
       if (title.length === 0 || title.length > 200) {
         return NextResponse.json(
-          { error: "Title must be between 1 and 200 characters" },
+          { error: "Le titre doit contenir entre 1 et 200 caractères" },
           { status: 400 }
         );
       }
@@ -97,17 +97,17 @@ export async function PUT(
         updateData.description = undefined;
       } else {
         if (typeof updates.description !== "string") {
-          return NextResponse.json(
-            { error: "Invalid description format" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "Format de description invalide" },
+          { status: 400 }
+        );
         }
         const description = updates.description.trim();
         if (description.length > 500) {
-          return NextResponse.json(
-            { error: "Description must be less than 500 characters" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "La description doit contenir moins de 500 caractères" },
+          { status: 400 }
+        );
         }
         updateData.description = description;
       }
@@ -118,17 +118,17 @@ export async function PUT(
         updateData.icon = undefined;
       } else {
         if (typeof updates.icon !== "string") {
-          return NextResponse.json(
-            { error: "Invalid icon format" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "Format d'icône invalide" },
+          { status: 400 }
+        );
         }
         const icon = updates.icon.trim();
         if (icon.length > 100) {
-          return NextResponse.json(
-            { error: "Icon must be less than 100 characters" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "L'icône doit contenir moins de 100 caractères" },
+          { status: 400 }
+        );
         }
         updateData.icon = icon;
       }
@@ -139,24 +139,24 @@ export async function PUT(
         updateData.link = undefined;
       } else {
         if (typeof updates.link !== "string") {
-          return NextResponse.json(
-            { error: "Invalid link format" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "Format de lien invalide" },
+          { status: 400 }
+        );
         }
         const link = updates.link.trim();
         if (link.length > 500) {
-          return NextResponse.json(
-            { error: "Link must be less than 500 characters" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "Le lien doit contenir moins de 500 caractères" },
+          { status: 400 }
+        );
         }
         // Validate link format
         if (link && !link.startsWith("/") && !link.startsWith("http://") && !link.startsWith("https://") && !link.startsWith("mailto:") && !link.startsWith("tel:")) {
-          return NextResponse.json(
-            { error: "Invalid link format" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "Format de lien invalide" },
+          { status: 400 }
+        );
         }
         updateData.link = link;
       }
@@ -167,10 +167,10 @@ export async function PUT(
         updateData.menu_item_name = undefined;
       } else {
         if (typeof updates.menu_item_name !== "string") {
-          return NextResponse.json(
-            { error: "Invalid menu_item_name format" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "Format de nom d'article de menu invalide" },
+          { status: 400 }
+        );
         }
         updateData.menu_item_name = updates.menu_item_name.trim();
       }
@@ -181,10 +181,10 @@ export async function PUT(
         updateData.menu_category_id = undefined;
       } else {
         if (typeof updates.menu_category_id !== "string") {
-          return NextResponse.json(
-            { error: "Invalid menu_category_id format" },
-            { status: 400 }
-          );
+        return NextResponse.json(
+          { error: "Format d'identifiant de catégorie de menu invalide" },
+          { status: 400 }
+        );
         }
         updateData.menu_category_id = updates.menu_category_id.trim();
       }
@@ -194,7 +194,7 @@ export async function PUT(
     if (updateData.menu_item_name || updateData.menu_category_id) {
       if (!updateData.menu_item_name || !updateData.menu_category_id) {
         return NextResponse.json(
-          { error: "Both menu_item_name and menu_category_id are required when linking to a menu item" },
+          { error: "Le nom d'article de menu et l'identifiant de catégorie sont requis lors de la liaison à un article de menu" },
           { status: 400 }
         );
       }
@@ -205,7 +205,7 @@ export async function PUT(
       const category = getCategoryById(updateData.menu_category_id);
       if (!category) {
         return NextResponse.json(
-          { error: "Menu category not found" },
+          { error: "Catégorie de menu introuvable" },
           { status: 400 }
         );
       }
@@ -213,7 +213,7 @@ export async function PUT(
       // Validate menu item exists in category
       if (!validateMenuItem(updateData.menu_category_id, updateData.menu_item_name)) {
         return NextResponse.json(
-          { error: "Menu item not found in the specified category" },
+          { error: "Article de menu introuvable dans la catégorie spécifiée" },
           { status: 400 }
         );
       }
@@ -227,7 +227,7 @@ export async function PUT(
     
     if (!item) {
       return NextResponse.json(
-        { error: "Item not found" },
+        { error: "Élément introuvable" },
         { status: 404 }
       );
     }
@@ -236,10 +236,10 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating footer item:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to update footer item", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec de la mise à jour de l'élément du footer", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 
@@ -250,7 +250,7 @@ export async function DELETE(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -259,7 +259,7 @@ export async function DELETE(
     
     if (isNaN(itemId)) {
       return NextResponse.json(
-        { error: "Invalid item ID" },
+        { error: "Identifiant d'élément invalide" },
         { status: 400 }
       );
     }
@@ -268,7 +268,7 @@ export async function DELETE(
     
     if (!success) {
       return NextResponse.json(
-        { error: "Item not found" },
+        { error: "Élément introuvable" },
         { status: 404 }
       );
     }
@@ -277,10 +277,10 @@ export async function DELETE(
   } catch (error) {
     console.error("Error deleting footer item:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to delete footer item", details: errorMessage },
-      { status: 500 }
-    );
+      return NextResponse.json(
+        { error: "Échec de la suppression de l'élément du footer", details: errorMessage },
+        { status: 500 }
+      );
   }
 }
 

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(formatted);
   } catch (error) {
     console.error("Error reading menu data:", error);
-    return NextResponse.json([], { status: 500 });
+    return NextResponse.json({ error: "Une erreur est survenue lors de la lecture du menu" }, { status: 500 });
   }
 }
 
@@ -40,13 +40,13 @@ export async function PUT(request: NextRequest) {
     // This endpoint can be used for bulk updates if needed
     // For now, individual CRUD operations are handled by other endpoints
     return NextResponse.json(
-      { error: "Use individual category/item endpoints for updates" },
+      { error: "Utilisez les endpoints individuels de catégorie/article pour les mises à jour" },
       { status: 400 }
     );
   } catch (error) {
     console.error("Error updating menu:", error);
     return NextResponse.json(
-      { error: "Failed to update menu data" },
+      { error: "Échec de la mise à jour des données du menu" },
       { status: 500 }
     );
   }

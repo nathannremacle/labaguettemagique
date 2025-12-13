@@ -5,15 +5,15 @@ const dbPath = path.join(__dirname, "..", "data", "menu.db");
 const db = new Database(dbPath);
 
 try {
-  console.log("Deleting all footer items...");
+  console.log("Suppression de tous les éléments du footer...");
   
   const stmt = db.prepare("DELETE FROM footer_items");
   const result = stmt.run();
   
-  console.log(`✓ Deleted ${result.changes} footer item(s) from database`);
-  console.log("✓ All footer items have been removed");
+  console.log(`✓ ${result.changes} élément(s) du footer supprimé(s) de la base de données`);
+  console.log("✓ Tous les éléments du footer ont été supprimés");
 } catch (error) {
-  console.error("Error deleting footer items:", error);
+  console.error("Erreur lors de la suppression des éléments du footer :", error);
   process.exit(1);
 } finally {
   db.close();

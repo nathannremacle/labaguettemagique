@@ -8,14 +8,14 @@ export async function POST(request: NextRequest) {
     // Input validation
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Username and password are required" },
+        { error: "Le nom d'utilisateur et le mot de passe sont requis" },
         { status: 400 }
       );
     }
 
     if (typeof username !== "string" || typeof password !== "string") {
       return NextResponse.json(
-        { error: "Invalid input format" },
+        { error: "Format d'entrée invalide" },
         { status: 400 }
       );
     }
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     // Sanitize input length (prevent DoS)
     if (username.length > 100 || password.length > 500) {
       return NextResponse.json(
-        { error: "Input too long" },
+        { error: "Entrée trop longue" },
         { status: 400 }
       );
     }
@@ -32,9 +32,8 @@ export async function POST(request: NextRequest) {
     const result = authenticate(username, password);
 
     if (!result.success) {
-      console.log("[Login API] Authentication failed:", result.error);
       return NextResponse.json(
-        { error: result.error || "Invalid credentials" },
+        { error: result.error || "Identifiants invalides" },
         { status: 401 }
       );
     }
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!result.sessionId) {
       console.error("[Login API] Authentication succeeded but no sessionId returned");
       return NextResponse.json(
-        { error: "Failed to create session" },
+        { error: "Échec de la création de la session" },
         { status: 500 }
       );
     }
@@ -63,23 +62,12 @@ export async function POST(request: NextRequest) {
       path: "/",
     });
 
-    console.log("[Login API] Session created successfully for user:", username);
-    if (!isProduction) {
-      console.log("[Login API] Cookie settings:", {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: "strict",
-        path: "/",
-        maxAge: "24 hours",
-        sessionIdLength: result.sessionId.length,
-      });
-    }
 
     return response;
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Erreur interne du serveur" },
       { status: 500 }
     );
   }

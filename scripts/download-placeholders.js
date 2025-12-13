@@ -50,7 +50,7 @@ function downloadImage(categoryId, index, searchTerm) {
     const filename = `${categoryId}-${index}.jpg`;
     const filepath = path.join(placeholdersDir, filename);
     
-    console.log(`Downloading ${filename}...`);
+    console.log(`Téléchargement de ${filename}...`);
     
     https.get(url, (response) => {
       if (response.statusCode === 200) {
@@ -58,7 +58,7 @@ function downloadImage(categoryId, index, searchTerm) {
         response.pipe(fileStream);
         fileStream.on('finish', () => {
           fileStream.close();
-          console.log(`✓ Downloaded ${filename}`);
+          console.log(`✓ ${filename} téléchargé`);
           resolve(filepath);
         });
       } else {
@@ -69,7 +69,7 @@ function downloadImage(categoryId, index, searchTerm) {
           picsumResponse.pipe(fileStream);
           fileStream.on('finish', () => {
             fileStream.close();
-            console.log(`✓ Downloaded ${filename} (fallback)`);
+            console.log(`✓ ${filename} téléchargé (secours)`);
             resolve(filepath);
           });
         }).on('error', reject);
@@ -91,7 +91,7 @@ function downloadImage(categoryId, index, searchTerm) {
 }
 
 async function downloadAllPlaceholders() {
-  console.log('Starting download of placeholder images...\n');
+  console.log('Démarrage du téléchargement des images de remplacement...\n');
   
   const allDownloads = [];
   
@@ -108,10 +108,10 @@ async function downloadAllPlaceholders() {
   
   try {
     await Promise.all(allDownloads);
-    console.log('\n✓ All placeholder images downloaded successfully!');
-    console.log(`Location: ${placeholdersDir}`);
+    console.log('\n✓ Toutes les images de remplacement ont été téléchargées avec succès !');
+    console.log(`Emplacement : ${placeholdersDir}`);
   } catch (error) {
-    console.error('Error downloading images:', error);
+    console.error('Erreur lors du téléchargement des images :', error);
   }
 }
 

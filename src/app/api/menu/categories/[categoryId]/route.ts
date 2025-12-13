@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
   try {
     const { categoryId } = await params;
@@ -40,7 +40,7 @@ export async function GET(
     console.error("Error reading category:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to read category", details: errorMessage },
+      { error: "Échec de la lecture de la catégorie", details: errorMessage },
       { status: 500 }
     );
   }
@@ -53,7 +53,7 @@ export async function PUT(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -61,7 +61,7 @@ export async function PUT(
     
     if (!categoryId) {
       return NextResponse.json(
-        { error: "Category ID is required" },
+        { error: "L'identifiant de la catégorie est requis" },
         { status: 400 }
       );
     }
@@ -70,7 +70,7 @@ export async function PUT(
     
     if (!updates.label || typeof updates.label !== 'string' || updates.label.trim() === '') {
       return NextResponse.json(
-        { error: "Category label is required and cannot be empty" },
+        { error: "Le libellé de la catégorie est requis et ne peut pas être vide" },
         { status: 400 }
       );
     }
@@ -78,7 +78,7 @@ export async function PUT(
     const label = updates.label.trim();
     if (label.length > 100) {
       return NextResponse.json(
-        { error: "Category label is too long (max 100 characters)" },
+        { error: "Le libellé de la catégorie est trop long (maximum 100 caractères)" },
         { status: 400 }
       );
     }
@@ -87,7 +87,7 @@ export async function PUT(
     
     if (!category) {
       return NextResponse.json(
-        { error: "Category not found" },
+        { error: "Catégorie introuvable" },
         { status: 404 }
       );
     }
@@ -103,7 +103,7 @@ export async function PUT(
     console.error("Error updating category:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to update category", details: errorMessage },
+      { error: "Échec de la mise à jour de la catégorie", details: errorMessage },
       { status: 500 }
     );
   }
@@ -116,7 +116,7 @@ export async function DELETE(
 ) {
   const user = requireAuth(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   try {
@@ -125,7 +125,7 @@ export async function DELETE(
     
     if (!success) {
       return NextResponse.json(
-        { error: "Category not found" },
+        { error: "Catégorie introuvable" },
         { status: 404 }
       );
     }
@@ -135,7 +135,7 @@ export async function DELETE(
     console.error("Error deleting category:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to delete category", details: errorMessage },
+      { error: "Échec de la suppression de la catégorie", details: errorMessage },
       { status: 500 }
     );
   }

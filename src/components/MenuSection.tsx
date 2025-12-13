@@ -79,12 +79,7 @@ export const MenuSection = memo(function MenuSection({ data }: MenuSectionProps)
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className={`text-2xl font-bold whitespace-nowrap ${
-                  theme === "dark" ? "text-amber-300" : "text-amber-600"
-                }`}>
-                  {item.price && !item.price.includes('€') ? `${item.price} €` : item.price}
-                </span>
-              {item.highlight && (
+                {item.highlight && (
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                     theme === "dark"
                       ? "bg-amber-400/20 text-amber-200"
@@ -92,7 +87,20 @@ export const MenuSection = memo(function MenuSection({ data }: MenuSectionProps)
                   }`}>
                   Coup de cœur
                 </span>
-              )}
+                )}
+                <span className={`text-2xl font-bold whitespace-nowrap ${
+                  theme === "dark" ? "text-amber-300" : "text-amber-600"
+                }`}>
+                  {(() => {
+                    let price = item.price && !item.price.includes('€') ? `${item.price} €` : item.price;
+                    // Remove spaces from price (fix for "4000" -> "4 0 0 0" issue)
+                    if (price) {
+                      price = price.replace(/\s+/g, '');
+                      price = price.replace(/([\d,.]+)-([\d,.]+)/g, '$1 - $2');
+                    }
+                    return price;
+                  })()}
+                </span>
               </div>
               <a
                 href={getWhatsAppOrderUrl(item.name)}
@@ -122,10 +130,18 @@ export const MenuSection = memo(function MenuSection({ data }: MenuSectionProps)
             <p className={`text-lg ${
               theme === "dark" ? "text-white/90" : "text-slate-700"
             }`}>{selectedItem.description}</p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-start gap-2">
               <span className={`text-3xl font-bold ${
                 theme === "dark" ? "text-amber-300" : "text-amber-600"
-              }`}>{selectedItem.price}</span>
+              }`}>{(() => {
+                let price = selectedItem.price;
+                // Remove spaces from price (fix for "4000" -> "4 0 0 0" issue)
+                if (price) {
+                  price = price.replace(/\s+/g, '');
+                  price = price.replace(/([\d,.]+)-([\d,.]+)/g, '$1 - $2');
+                }
+                return price;
+              })()}</span>
               {selectedItem.highlight && (
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                   theme === "dark"
